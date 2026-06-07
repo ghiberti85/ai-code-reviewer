@@ -11,15 +11,46 @@ import { LANGUAGES } from './lib/groq'
 import { buildShareUrl, readShareFromUrl } from './lib/share'
 import type { Language, HistoryEntry } from './types/review'
 
-const SAMPLE_CODE = `async function fetchUser(id) {
-  try {
-    const res = await fetch("https://api.example.com/users/" + id)
-    if (!res.ok) throw new Error("Request failed: " + res.status)
-    const data = await res.json()
-    const el = document.getElementById("user")
-    if (el) el.textContent = data.name
-  } catch (err) {
-    console.error("fetchUser error:", err)
+const SAMPLE_CODE = `// User authentication service
+var users = []
+var isLoading = false
+
+function getUser(id) {
+  for (var i = 0; i < users.length; i++) {
+    if (users[i].id == id) {
+      return users[i]
+    }
+  }
+}
+
+function saveUser(user) {
+  var found = false
+  for (var i = 0; i < users.length; i++) {
+    if (users[i].id == user.id) {
+      users[i] = user
+      found = true
+    }
+  }
+  if (!found) {
+    users.push(user)
+  }
+}
+
+async function loadUsers() {
+  isLoading = true
+  var res = await fetch('/api/users')
+  var data = await res.json()
+  users = data
+  isLoading = false
+}
+
+function deleteUser(id) {
+  var idx = -1
+  for (var i = 0; i < users.length; i++) {
+    if (users[i].id == id) idx = i
+  }
+  if (idx > -1) {
+    users.splice(idx, 1)
   }
 }`
 
