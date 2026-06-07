@@ -37,7 +37,7 @@ TypeScript · JavaScript · Python · Go · Rust · Java · C# · CSS · SQL
 | Animations | Framer Motion |
 | Async state | TanStack Query |
 | Syntax highlight | Shiki |
-| LLM | Groq API — `openai/gpt-oss-120b` (free tier) |
+| LLM | Groq API — `qwen/qwen3-32b` (free tier) |
 | Backend | Vercel Edge Functions |
 | Storage | localStorage (no database) |
 | Tests | Vitest + React Testing Library (45 tests) |

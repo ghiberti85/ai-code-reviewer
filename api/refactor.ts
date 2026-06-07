@@ -82,7 +82,7 @@ export default async function handler(req: Request): Promise<Response> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'openai/gpt-oss-120b',
+      model: 'qwen/qwen3-32b',
       messages: [
         { role: 'system', content: REFACTOR_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },
