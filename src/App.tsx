@@ -180,6 +180,38 @@ const S = {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
+function EditorStatusBar({ code, language }: { code: string; language: Language }) {
+  const lines = code ? code.split('\n').length : 0
+  const bytes = new TextEncoder().encode(code).length
+  const kb = (bytes / 1024).toFixed(1)
+  const nearLimit = bytes > 45_000
+  const overLimit = bytes > 50_000
+
+  return (
+    <div style={{
+      padding: '4px 20px',
+      borderTop: '1px solid #1E2220',
+      background: '#141716',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '16px',
+      flexShrink: 0,
+    }}>
+      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95' }}>
+        {lines} {lines === 1 ? 'line' : 'lines'}
+      </span>
+      <span style={{ color: '#2A3530', fontSize: '11px' }}>·</span>
+      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: overLimit ? '#FF2244' : nearLimit ? '#FFD700' : '#8A9E95' }}>
+        {kb} KB{nearLimit ? ' ⚠' : ''}
+      </span>
+      <span style={{ color: '#2A3530', fontSize: '11px' }}>·</span>
+      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95' }}>
+        {language}
+      </span>
+    </div>
+  )
+}
+
 function StreamingDots() {
   return (
     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '16px 0' }}>
@@ -505,6 +537,7 @@ export default function App() {
                 spellCheck={false}
                 placeholder="Paste your code here..."
               />
+              <EditorStatusBar code={code} language={language} />
             </div>
 
             {/* Right — Results */}
