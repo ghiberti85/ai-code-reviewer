@@ -39,7 +39,6 @@ body {
 }
 
 .copy-all-btn { display: none; }
-.diff-close-mobile-bar { display: none; }
 
 /* ── Diff fullscreen overlay ─────────────────────────── */
 .diff-fullscreen {
@@ -54,6 +53,17 @@ body {
 
 /* ── Mobile ≤ 768px ─────────────────────────────────── */
 @media (max-width: 768px) {
+  /* Push header below the phone status bar (notch/Dynamic Island) */
+  header {
+    padding-top: env(safe-area-inset-top) !important;
+    height: calc(56px + env(safe-area-inset-top)) !important;
+  }
+
+  /* Shrink app-main to account for taller header */
+  .app-main {
+    height: calc(100vh - 56px - env(safe-area-inset-top) - 56px) !important;
+  }
+
   .app-header-logo { font-size: 12px !important; }
   .app-header-nav  { display: none !important; }
 
@@ -154,34 +164,23 @@ body {
   /* ── Diff fullscreen on mobile ── */
   .diff-esc-hint { display: none; }
 
+  /* Header of the fullscreen diff must clear the phone status bar */
+  .diff-fullscreen-header {
+    padding-top: calc(env(safe-area-inset-top) + 10px) !important;
+  }
+
   .diff-close-btn {
-    padding: 10px 20px !important;
+    padding: 10px 16px !important;
     font-size: 13px !important;
     min-height: 44px;
   }
 
-  /* Sticky close bar at bottom of diff overlay */
-  .diff-close-mobile-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 14px;
-    padding-bottom: calc(14px + env(safe-area-inset-bottom));
-    background: #141716;
-    border-top: 1px solid #1E2220;
-    color: #8A9E95;
-    font-family: 'Syne', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    border-left: none;
-    border-right: none;
-    border-bottom: none;
-    flex-shrink: 0;
+  /* Unified diff font in fullscreen: smaller so more code is visible */
+  .diff-fullscreen .shiki code,
+  .diff-fullscreen table {
+    font-size: 10px !important;
+    line-height: 1.6 !important;
   }
-
-  .diff-close-mobile-bar:active { background: #1E2220; }
 }
 
 /* ── Tablet 769–1024px ───────────────────────────────── */

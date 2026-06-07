@@ -133,7 +133,8 @@ const S = {
     resize: 'none' as const,
     padding: '20px',
     fontFamily: 'JetBrains Mono, monospace',
-    fontSize: '13px',
+    // 16px minimum prevents iOS auto-zoom on focus
+    fontSize: '16px',
     lineHeight: '1.7',
     overflow: 'auto',
     tabSize: 2,
@@ -462,7 +463,8 @@ function DiffFullscreen({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <div style={{ ...S.panelHeader, justifyContent: 'space-between' }}>
+      {/* Header respects safe-area-inset-top so it never hides behind status bar */}
+      <div className="diff-fullscreen-header" style={{ ...S.panelHeader, justifyContent: 'space-between' }}>
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95', letterSpacing: '0.08em' }}>
           DIFF — ORIGINAL vs REFACTORED
         </span>
@@ -470,13 +472,9 @@ function DiffFullscreen({
           ✕ Close <span className="diff-esc-hint" style={{ color: '#2A3530', fontSize: '10px' }}>Esc</span>
         </button>
       </div>
-      <div style={{ flex: 1, overflow: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '0' }}>
-        <DiffView original={original} refactored={refactored} language={language} fullscreen />
+      <div style={{ flex: 1, overflow: 'auto', padding: '16px', display: 'flex', flexDirection: 'column' }}>
+        <DiffView original={original} refactored={refactored} language={language} fullscreen forceMobile />
       </div>
-      {/* Mobile sticky close bar */}
-      <button onClick={onClose} className="diff-close-mobile-bar">
-        ✕ Fechar diff
-      </button>
     </motion.div>
   )
 }
@@ -513,8 +511,14 @@ export default function App() {
     if (res) addEntry(code, language, res)
   }, [code, language, runReview, addEntry, isMobile])
 
-  const handleCopyAll = useCallback(async () => {
-    await navigator.clipboard.writeText(code)
+  const handleSelectAll = useCallback(async () => {
+    // Select all text in the textarea (mobile: triggers native copy toolbar)
+    const ta = textareaRef.current
+    if (ta) { ta.focus(); ta.select() }
+    // Also write to clipboard as fallback
+    try {
+      await navigator.clipboard.writeText(code)
+    } catch { /* clipboard permission denied — native selection is enough */ }
     setCodeCopied(true)
     setTimeout(() => setCodeCopied(false), 2000)
   }, [code])
@@ -558,11 +562,11 @@ export default function App() {
                 <FileDropZone onLoad={(c, l) => { setCode(c); setLanguage(l) }} />
                 {isMobile && (
                   <button
-                    onClick={handleCopyAll}
+                    onClick={handleSelectAll}
                     className="copy-all-btn"
                     style={{ ...S.copyBtn, color: codeCopied ? '#00FF88' : '#8A9E95', borderColor: codeCopied ? '#00FF8844' : '#2A3530' }}
                   >
-                    {codeCopied ? '✓ Copied' : '⊡ Copy All'}
+                    {codeCopied ? '✓ Selected' : '⊡ Select All'}
                   </button>
                 )}
                 <button

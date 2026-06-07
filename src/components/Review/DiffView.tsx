@@ -9,6 +9,7 @@ interface Props {
   refactored: string
   language: Language
   fullscreen?: boolean
+  forceMobile?: boolean
 }
 
 type DiffMode = 'split' | 'unified'
@@ -63,9 +64,9 @@ function getHighlighter() {
 }
 
 
-export function DiffView({ original, refactored, language, fullscreen }: Props) {
+export function DiffView({ original, refactored, language, fullscreen, forceMobile }: Props) {
   // On mobile, split view is unusable — default to unified and hide the split toggle
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+  const isMobile = forceMobile ?? (typeof window !== 'undefined' && window.innerWidth <= 768)
   const [mode, setMode] = useState<DiffMode>(isMobile ? 'unified' : 'split')
   const [leftHtml, setLeftHtml] = useState('')
   const [rightHtml, setRightHtml] = useState('')
