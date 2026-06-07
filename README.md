@@ -2,17 +2,32 @@
 
 AI-powered code review tool. Paste your code, get an instant quality score, issues list, and a refactored version — all streamed in real time.
 
-**Live demo:** [ai-code-reviewer on Vercel](https://ai-code-reviewer.vercel.app)
+[![CI](https://github.com/ghiberti85/ai-code-reviewer/actions/workflows/ci.yml/badge.svg)](https://github.com/ghiberti85/ai-code-reviewer/actions/workflows/ci.yml)
+
+---
 
 ## Features
 
-- Quality score (0–100) with animated circular gauge
-- Issues list with severity: `error` / `warning` / `suggestion`
-- Positives — what the code already does well
-- Refactored version with one-click copy
-- Streaming output — results appear as they are generated
-- Review history — last 20 entries saved in localStorage
-- 9 languages: TypeScript, JavaScript, Python, Go, Rust, Java, C#, CSS, SQL
+- **Score 0–100** — animated circular gauge with color by range
+- **Issues** — error / warning / suggestion with line numbers and concrete fixes
+- **Positives** — what the code already does well
+- **Refactored code** — complete rewrite that fixes every listed issue
+- **Diff view** — split (Shiki-highlighted) and unified (GitHub-style hunks) modes
+- **Fullscreen diff** — expand the diff to full screen, close with Esc
+- **Streaming** — results appear as they are generated (~3s first token)
+- **Share link** — encode the full review in a URL, no backend needed
+- **File upload** — drag & drop or click to upload, language auto-detected from extension
+- **Embed badge** — HTML/Markdown snippets to add a score badge to your README
+- **History** — last 20 reviews saved in localStorage, accessible in a History tab
+- **Responsive** — full desktop layout, tablet grid, mobile bottom tab bar
+
+---
+
+## Languages supported
+
+TypeScript · JavaScript · Python · Go · Rust · Java · C# · CSS · SQL
+
+---
 
 ## Stack
 
@@ -25,6 +40,9 @@ AI-powered code review tool. Paste your code, get an instant quality score, issu
 | LLM | Groq API — `llama-4-scout-17b-16e-instruct` (free tier) |
 | Backend | Vercel Edge Functions |
 | Storage | localStorage (no database) |
+| Tests | Vitest + React Testing Library (45 tests) |
+
+---
 
 ## Architecture
 
@@ -33,12 +51,15 @@ Browser → React App → POST /api/review → Vercel Edge Function → Groq API
 ```
 
 The Edge Function proxies the request to Groq, keeping the API key server-side only.
+The SSE stream from Groq is transformed into a plain-text stream that the browser reads chunk by chunk.
 
-## Getting Started
+---
+
+## Getting started
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - [Vercel CLI](https://vercel.com/docs/cli): `npm i -g vercel`
 - [Groq API key](https://console.groq.com/keys) (free)
 
@@ -49,79 +70,117 @@ git clone https://github.com/ghiberti85/ai-code-reviewer.git
 cd ai-code-reviewer
 npm install
 cp .env.example .env.local
-# Add your GROQ_API_KEY to .env.local
+# paste your GROQ_API_KEY into .env.local
 vercel dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
+Open [http://localhost:3000](http://localhost:3000).  
 `vercel dev` runs both Vite (frontend) and the Edge Function (`/api/review`) together.
+
+### Running tests
+
+```bash
+npm test               # run all tests once
+npm run test:watch     # watch mode
+npm run test:coverage  # HTML coverage report in coverage/
+```
 
 ### Deploy to Vercel
 
+#### Option A — Dashboard (no CLI needed)
+1. Import the repo at **vercel.com → Add New → Project**
+2. Add `GROQ_API_KEY` in **Settings → Environment Variables** before the first deploy
+3. Click **Deploy**
+
+#### Option B — CLI
 ```bash
 vercel --prod
 vercel env add GROQ_API_KEY production
-vercel --prod  # redeploy to apply the env var
+vercel --prod   # redeploy to apply the env var
 ```
 
-Or set `GROQ_API_KEY` via the Vercel dashboard: **Project → Settings → Environment Variables**.
+#### Option C — GitHub Actions (recommended)
+Add these secrets to your GitHub repo (**Settings → Secrets → Actions**):
 
-## Environment Variables
+| Secret | Where to find it |
+|--------|-----------------|
+| `VERCEL_TOKEN` | vercel.com → Account Settings → Tokens |
+| `VERCEL_ORG_ID` | `.vercel/project.json` → `orgId` after first `vercel` run |
+| `VERCEL_PROJECT_ID` | `.vercel/project.json` → `projectId` |
+
+After that, every merge to `main` triggers an automatic production deploy. CI runs on every push.
+
+---
+
+## Environment variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `GROQ_API_KEY` | Yes | Groq API key. Get one at [console.groq.com](https://console.groq.com/keys) |
+| `GROQ_API_KEY` | Yes | Groq API key — [console.groq.com](https://console.groq.com/keys) |
 
-**Never commit `.env.local` to git.** It is already in `.gitignore`.
+**Never commit `.env.local`** — it is already in `.gitignore`.
+
+---
 
 ## Security
 
-- `GROQ_API_KEY` is never exposed to the browser — all LLM calls go through the Edge Function
-- Code input is validated and limited to 50KB per request
-- Language parameter is validated against an allowlist
-- Groq API errors are logged server-side but not forwarded to the client
-- User code is stored only in the browser's localStorage, never in a database
+- `GROQ_API_KEY` never reaches the browser — all LLM calls go through the Edge Function
+- Input validated and limited to 50 KB per request
+- Language parameter validated against an allowlist
+- Groq API errors logged server-side, generic message returned to client
+- Security headers on all responses: CSP, HSTS, X-Frame-Options, nosniff, Permissions-Policy
+- User code stored only in the browser's localStorage, never in a database
 
-## ReviewResult Schema
+See [docs/SECURITY.md](docs/SECURITY.md) for the full threat model.
 
-```ts
-{
-  score: number           // 0–100
-  summary: string
-  issues: {
-    line: number | null
-    severity: 'error' | 'warning' | 'suggestion'
-    message: string
-    fix: string
-  }[]
-  positives: string[]
-  refactored: string | null
-}
-```
+---
 
-## Project Structure
+## Project structure
 
 ```
 ai-code-reviewer/
-├── api/
-│   └── review.ts          # Vercel Edge Function — Groq proxy
+├── api/review.ts              # Vercel Edge Function — Groq proxy
 ├── src/
-│   ├── App.tsx            # Main layout, tabs, editor, results
-│   ├── main.tsx
-│   ├── types/review.ts    # ReviewResult, Issue, HistoryEntry types
-│   ├── lib/groq.ts        # System prompt + language config
+│   ├── App.tsx                # Main layout, tabs, editor, results
+│   ├── index.css              # Global styles + responsive media queries
+│   ├── types/review.ts        # ReviewResult, Issue, HistoryEntry types
+│   ├── lib/
+│   │   ├── groq.ts            # System prompt + language config
+│   │   └── share.ts           # URL-based review sharing (base64)
 │   ├── hooks/
-│   │   ├── useReview.ts   # Streaming state machine
-│   │   └── useHistory.ts  # localStorage CRUD
-│   └── components/Review/
-│       ├── ScoreBadge.tsx # Animated SVG circular score
-│       └── IssueCard.tsx  # Severity-coded issue card
-├── index.html
-├── vite.config.ts
-├── vercel.json
-└── .env.example
+│   │   ├── useReview.ts       # Streaming state machine
+│   │   ├── useHistory.ts      # localStorage CRUD (20-entry cap)
+│   │   └── useMediaQuery.ts   # Responsive breakpoint hook
+│   ├── components/
+│   │   ├── FileDropZone.tsx   # File upload + drag & drop
+│   │   ├── EmbedBadge.tsx     # Portfolio badge generator
+│   │   └── Review/
+│   │       ├── ScoreBadge.tsx # Animated SVG score gauge
+│   │       ├── IssueCard.tsx  # Severity-coded issue card
+│   │       └── DiffView.tsx   # Split + Unified diff
+│   └── test/                  # 45 tests across 7 files
+├── .github/workflows/
+│   ├── ci.yml                 # Type-check + tests on every push
+│   └── deploy.yml             # Production deploy on merge to main
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── SECURITY.md
+│   └── TESTING.md
+├── CLAUDE.md                  # Architecture guide for Claude Code
+├── ROADMAP.md                 # Feature roadmap
+└── vercel.json                # Security headers + CSP
 ```
+
+---
+
+## Docs
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security](docs/SECURITY.md)
+- [Testing](docs/TESTING.md)
+- [Roadmap](ROADMAP.md)
+
+---
 
 ## License
 

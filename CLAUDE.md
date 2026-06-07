@@ -173,6 +173,24 @@ ai-code-reviewer/
 
 ---
 
+## Regra de documentação viva
+
+**A cada implementação concluída, atualizar obrigatoriamente:**
+
+| O que mudou | Arquivo(s) a atualizar |
+|-------------|----------------------|
+| Nova feature | `README.md` (Features), `ROADMAP.md` (mover para ✅), `CLAUDE.md` (se mudar arquitetura) |
+| Nova rota / endpoint | `docs/ARCHITECTURE.md`, `CLAUDE.md` (Estrutura de pastas) |
+| Novo hook ou componente | `CLAUDE.md` (Estrutura de pastas + regras) |
+| Mudança de segurança | `docs/SECURITY.md`, `vercel.json` |
+| Novos testes | `docs/TESTING.md` (se mudar estratégia) |
+| Nova env var | `CLAUDE.md` (tabela de env vars), `README.md`, `.env.example` |
+| Nova dependência | `README.md` (tabela de stack) |
+
+Não fechar um PR sem verificar se a documentação está sincronizada com o código.
+
+---
+
 ## Comandos
 
 ```bash
