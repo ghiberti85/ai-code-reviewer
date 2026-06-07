@@ -623,29 +623,34 @@ export default function App() {
       </AnimatePresence>
 
       {/* ── Mobile bottom tab bar ────────────────────────────────────────── */}
-      {tab === 'editor' && (
-        <nav className="mobile-tabs">
-          <button className={`mobile-tab${mobilePanel === 'code' ? ' active' : ''}`} onClick={() => setMobilePanel('code')}>
-            <div className="mobile-tab-dot" />
-            Code
-          </button>
-          <button
-            className={`mobile-tab${mobilePanel === 'results' ? ' active' : ''}`}
-            onClick={() => {
-              if (!code.trim()) return
-              if (status === 'idle') handleRun()
-              else setMobilePanel('results')
-            }}
-          >
-            <div className="mobile-tab-dot" />
-            {isLoading ? 'Analyzing...' : 'Results'}
-          </button>
-          <button className="mobile-tab" onClick={() => setTab('history')}>
-            <div className="mobile-tab-dot" />
-            History
-          </button>
-        </nav>
-      )}
+      <nav className="mobile-tabs">
+        <button
+          className={`mobile-tab${tab === 'editor' && mobilePanel === 'code' ? ' active' : ''}`}
+          onClick={() => { setTab('editor'); setMobilePanel('code') }}
+        >
+          <div className="mobile-tab-dot" />
+          Code
+        </button>
+        <button
+          className={`mobile-tab${tab === 'editor' && mobilePanel === 'results' ? ' active' : ''}`}
+          onClick={() => {
+            setTab('editor')
+            if (!code.trim()) return
+            if (status === 'idle') handleRun()
+            else setMobilePanel('results')
+          }}
+        >
+          <div className="mobile-tab-dot" />
+          {isLoading ? 'Analyzing...' : 'Results'}
+        </button>
+        <button
+          className={`mobile-tab${tab === 'history' ? ' active' : ''}`}
+          onClick={() => setTab('history')}
+        >
+          <div className="mobile-tab-dot" />
+          History
+        </button>
+      </nav>
 
       {/* ── Fullscreen Diff Overlay ──────────────────────────────────────── */}
       <AnimatePresence>
