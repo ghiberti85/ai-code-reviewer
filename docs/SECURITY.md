@@ -8,8 +8,9 @@
 3. Integridade do output — resultado manipulado poderia induzir decisões erradas
 
 ### Superfície de ataque
-- `POST /api/review` — único endpoint público, aceita código arbitrário
-- Frontend — XSS via conteúdo exibido
+- `POST /api/review` — endpoint público, aceita código arbitrário
+- `POST /api/refactor` — endpoint público, aceita código + array de issues
+- Frontend — XSS via conteúdo exibido (Shiki, share URL)
 - localStorage — dados do usuário persistidos no browser
 
 ---
@@ -21,7 +22,7 @@
 - A chave só existe no ambiente da Vercel Edge Function em runtime
 - Guard explícito: se `process.env.GROQ_API_KEY` for `undefined`, o endpoint retorna 500 sem revelar detalhes
 
-### 2. Validação de input (`api/review.ts`)
+### 2. Validação de input (`api/review.ts` e `api/refactor.ts`)
 ```
 POST /api/review
   ├── Método ≠ POST → 405
@@ -82,7 +83,7 @@ Content-Security-Policy: default-src 'self'; connect-src 'self' https://api.groq
 
 ---
 
-## Rate Limiting (a implementar)
+## Rate Limiting (not yet implemented — future mitigation)
 
 O endpoint `/api/review` não tem rate limiting atualmente. Para projetos em produção com tráfego público, implementar:
 

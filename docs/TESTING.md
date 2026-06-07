@@ -31,10 +31,17 @@ src/test/
 │   └── useReview.test.ts       # streaming state machine
 ├── components/
 │   ├── ScoreBadge.test.tsx     # score + cores
-│   └── IssueCard.test.tsx      # severidades + conteúdo
+│   ├── IssueCard.test.tsx      # severidades + conteúdo
+│   └── EditorStatusBar.test.tsx  # line count, file size, language display
 └── api/
     └── review.test.ts          # validação de inputs da Edge Function
 ```
+
+## Cobertura atual de componentes
+
+Componentes com testes: `ScoreBadge`, `IssueCard`, `EditorStatusBar`
+
+Componentes **sem testes** (pendentes de cobertura): `FileDropZone`, `EmbedBadge`, `DiffView`
 
 ## Filosofia
 

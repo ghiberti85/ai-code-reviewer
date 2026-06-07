@@ -18,7 +18,8 @@
                                                 │
                                     ┌───────────▼──────────┐
                                     │  Groq API            │
-                                    │  llama-4-scout       │
+                                    │  llama-4-scout (review)   │
+                                    │  qwen3-32b (refactor)│
                                     │  (SSE streaming)     │
                                     └──────────────────────┘
 ```
@@ -53,6 +54,8 @@ Melhora a percepção de performance. O usuário vê feedback imediato ao invés
 
 ## State machine do useReview
 
+Estados: `idle | streaming | done | error`
+
 ```
 idle
   └─[runReview]─▶ streaming
@@ -66,6 +69,17 @@ done / error
 (any state)
   └─[loadResult]─▶ done   (usado ao carregar share link)
 ```
+
+Nota: não existe um estado `refactoring` separado no hook. A chamada a `/api/refactor` é feita como operação adicional após o estado `done`, fora do ciclo de estados do `useReview`.
+
+## Modelos LLM e parâmetros
+
+| Endpoint | Modelo | temperature | max_tokens |
+|----------|--------|-------------|------------|
+| `POST /api/review` | `meta-llama/llama-4-scout-17b-16e-instruct` | 0.3 | 4096 |
+| `POST /api/refactor` | `qwen/qwen3-32b` | 0.2 | 8192 |
+
+Ambos usam `response_format: { type: 'json_object' }` para garantir saída JSON válida.
 
 ## Responsividade
 

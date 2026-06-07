@@ -28,6 +28,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (!process.env.GROQ_API_KEY) {
+    console.error('GROQ_API_KEY is not set')
     return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -67,9 +68,25 @@ export default async function handler(req: Request): Promise<Response> {
     })
   }
 
-  const issuesSummary = Array.isArray(issues) && issues.length > 0
-    ? `\n\nKnown issues to fix:\n${(issues as Array<{ message: string; fix: string }>)
-        .map((iss, i) => `${i + 1}. ${iss.message} → Fix: ${iss.fix}`)
+  // Validate and sanitize the issues array before interpolating into the prompt.
+  // Each item must have string message/fix fields, capped at 500 chars each, and
+  // the array is limited to 20 entries — preventing prompt injection via crafted payloads.
+  const MAX_ISSUE_FIELD_LEN = 500
+  const MAX_ISSUES = 20
+
+  let sanitizedIssues: Array<{ message: string; fix: string }> = []
+  if (Array.isArray(issues)) {
+    for (const item of issues.slice(0, MAX_ISSUES)) {
+      if (item === null || typeof item !== 'object') continue
+      const message = typeof item.message === 'string' ? item.message.slice(0, MAX_ISSUE_FIELD_LEN) : ''
+      const fix = typeof item.fix === 'string' ? item.fix.slice(0, MAX_ISSUE_FIELD_LEN) : ''
+      if (message) sanitizedIssues.push({ message, fix })
+    }
+  }
+
+  const issuesSummary = sanitizedIssues.length > 0
+    ? `\n\nKnown issues to fix:\n${sanitizedIssues
+        .map((iss, i) => `${i + 1}. ${iss.message}${iss.fix ? ` → Fix: ${iss.fix}` : ''}`)
         .join('\n')}`
     : ''
 

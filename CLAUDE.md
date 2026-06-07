@@ -7,12 +7,16 @@ Guia de arquitetura e convenções para o Claude Code. Leia este arquivo antes d
 ## Arquitetura
 
 ```
-Browser → React App (Vite) → POST /api/review → Vercel Edge Function → Groq API (streaming SSE)
-                                                                              ↓
-                                                              qwen/qwen3-32b
+Browser → React App (Vite) → POST /api/review  → Vercel Edge Function → Groq API (streaming SSE)
+                           → POST /api/refactor → Vercel Edge Function → Groq API (streaming SSE)
+                                                                               ↓
+                                          /api/review:  meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 4096, temperature: 0.3)
+                                          /api/refactor: qwen/qwen3-32b (max_tokens: 8192, temperature: 0.2)
 ```
 
 O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON acumulado), que o frontend consome linha a linha e exibe em tempo real.
+
+`/api/refactor` é chamado automaticamente pelo `useReview` após o streaming de review terminar, quando `score < 90` e `refactored` é `null`. Isso implementa uma estratégia de **two-pass**: o primeiro passo gera a análise, o segundo gera o código refatorado de forma focada.
 
 ---
 
@@ -24,7 +28,8 @@ O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON ac
 | Animações | Framer Motion | 11 |
 | Async state | TanStack Query | 5 |
 | Syntax highlight | Shiki | 1 |
-| LLM | Groq API (Qwen3 32B) | free tier |
+| LLM (review) | Groq API — `meta-llama/llama-4-scout-17b-16e-instruct` | free tier |
+| LLM (refactor) | Groq API — `qwen/qwen3-32b` | free tier |
 | Backend | Vercel Edge Functions | — |
 | Storage | localStorage | — |
 | Testes | Vitest + React Testing Library | — |
@@ -83,9 +88,10 @@ interface ReviewResult {
 ```
 ai-code-reviewer/
 ├── api/
-│   └── review.ts              # Edge Function — sem imports de src/
+│   ├── review.ts              # Edge Function — análise de código (streaming) — sem imports de src/
+│   └── refactor.ts            # Edge Function — refatoração focada (streaming) — sem imports de src/
 ├── src/
-│   ├── App.tsx                # Layout, tabs, editor, resultados
+│   ├── App.tsx                # Layout, tabs, editor, resultados; sub-componentes inline: StreamingDots, ScoreCircle, ResultPanel, HistoryPage, DiffFullscreen
 │   ├── main.tsx               # Entry point + QueryClient
 │   ├── index.css              # Estilos globais + media queries responsivas
 │   ├── types/
@@ -101,8 +107,8 @@ ai-code-reviewer/
 │   │   ├── FileDropZone.tsx   # Upload + drag & drop de arquivo
 │   │   ├── EmbedBadge.tsx     # Snippets HTML/Markdown para portfólio
 │   │   └── Review/
-│   │       ├── ScoreBadge.tsx # SVG circular animado (Framer Motion)
-│   │       ├── IssueCard.tsx  # Card de issue com severidade e fix
+│   │       ├── ScoreBadge.tsx # SVG circular animado; contador 0→score; partículas ≥90; shake <30
+│   │       ├── IssueCard.tsx  # Card de issue com severidade e fix; click-to-copy no fix
 │   │       └── DiffView.tsx   # Split + Unified diff com Shiki highlight
 │   └── test/
 │       ├── setup.ts           # jest-dom matchers
@@ -132,14 +138,24 @@ ai-code-reviewer/
 
 ## Regras de implementação para Claude
 
-### api/review.ts
-- **Nunca importar de `../src/`** — o Edge Function é bundlado isoladamente pela Vercel. Toda lógica compartilhada deve estar inline neste arquivo.
+### api/review.ts e api/refactor.ts
+- **Nunca importar de `../src/`** — cada Edge Function é bundlada isoladamente pela Vercel. Toda lógica compartilhada deve estar inline no arquivo correspondente.
 - Validar todos os inputs antes de chamar a Groq API
 - Logar erros da Groq server-side via `console.error`, nunca repassar payload raw ao cliente
 - Manter `export const config = { runtime: 'edge' }` — remove essa linha e o runtime quebra
+- `api/review.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 4096`, `temperature: 0.3`
+- `api/refactor.ts` usa `model: 'qwen/qwen3-32b'`, `max_tokens: 8192`, `temperature: 0.2`
+- `api/refactor.ts` recebe `{ code, language, issues, summary }` e retorna stream de texto com o código refatorado
+
+### Estratégia two-pass (refactored automático)
+- `useReview.ts` tem os estados: `idle → streaming → done | error` (sem estado `refactoring` separado)
+- A chamada a `/api/refactor` é feita externamente (ex: em `App.tsx` ou hook de orquestração) quando o review termina com `score < 90` e `refactored === null`
+- O output de `/api/refactor` é acumulado em streaming e injetado em `result.refactored`
+- Saídas de `\n` e `\t` literais (escaped) são normalizadas para quebras de linha e tabs reais
 
 ### src/lib/groq.ts
 - `SYSTEM_PROMPT` e `LANGUAGES` são a única fonte de verdade do frontend
+- O prompt usa checklist binário de 7 pontos, lista `FORBIDDEN` e bloco `SELF-CHECK`
 - Quando alterar o prompt, **também atualizar** a cópia inline em `api/review.ts`
 
 ### Responsividade
