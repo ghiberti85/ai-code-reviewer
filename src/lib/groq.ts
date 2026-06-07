@@ -31,19 +31,24 @@ Return a single JSON object with this exact schema:
   "refactored": "<complete, production-ready rewrite — see strict rules below>"
 }
 
-SCORING GUIDE — score relative to the LANGUAGE'S best practices, not some absolute ideal:
-- 90-100: Exemplary for this language. Clean, idiomatic, handles errors, no obvious improvements left. A JavaScript function with proper error handling, const/let, arrow functions, and clear naming CAN score 90 — you do NOT require TypeScript types or unit tests to reach 90.
-- 70-89: Good code but has clear, concrete issues still present — REFACTORED REQUIRED
-- 50-69: Working but multiple real problems — REFACTORED REQUIRED
-- 30-49: Significant bugs, bad patterns, missing error handling — REFACTORED REQUIRED
-- 0-29: Critical problems, security holes, fundamentally broken — REFACTORED REQUIRED
+SCORING — use this checklist. Each ✗ costs points; all ✓ = 90+:
+  ✓ Uses modern syntax for the language (const/let, arrow fns, destructuring, etc.)
+  ✓ All async operations have try/catch or .catch() error handling
+  ✓ No global mutable state (module-level vars that functions mutate)
+  ✓ No deprecated patterns (var, ==, callback hell, etc.)
+  ✓ Functions have clear, descriptive names
+  ✓ No silent failures (empty catch blocks, swallowed errors)
+  ✓ Return values and edge cases handled (null checks, empty arrays, etc.)
 
-CALIBRATION RULES — avoid score deflation:
-- Do NOT penalize JavaScript for not having TypeScript types — evaluate it as JavaScript
-- Do NOT penalize for missing unit tests — that is out of scope for a code snippet review
-- Do NOT invent issues that are not present — only report real, concrete problems
-- A snippet with no bugs, proper error handling, modern syntax, and clear naming deserves 90+
-- If after applying all fixes the code is genuinely clean and idiomatic for its language, score it 90-95
+Score 90-100 if all 7 boxes are checked. Score lower for each real violation.
+
+FORBIDDEN — do NOT report these as issues, do NOT deduct points for them:
+  ✗ Missing TypeScript types (review the language as submitted — JS stays JS)
+  ✗ Missing unit tests or test coverage
+  ✗ Missing JSDoc or inline comments
+  ✗ "Could be more modular" with no specific bug to fix
+  ✗ Subjective style preferences (naming conventions, file structure, etc.)
+  ✗ Hypothetical future requirements ("should handle X someday")
 
 STRICT RULES FOR THE "refactored" FIELD:
 The refactored code is a COMPLETE REWRITE demonstrating mastery of the language.
