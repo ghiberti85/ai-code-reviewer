@@ -42,7 +42,7 @@ function Particles({ score }: { score: number }) {
       id: i,
       tx: 64 + Math.cos(rad) * distance,
       ty: 64 + Math.sin(rad) * distance,
-      delay: i * 0.04,
+      delay: i * 0.02,
     }
   })
 
@@ -57,7 +57,7 @@ function Particles({ score }: { score: number }) {
           fill="#00FF88"
           initial={{ cx: 64, cy: 64, opacity: 0, r: 2.5 }}
           animate={{ cx: p.tx, cy: p.ty, opacity: [0, 1, 0], r: 1 }}
-          transition={{ duration: 0.7, delay: p.delay, ease: 'easeOut' }}
+          transition={{ duration: 0.35, delay: p.delay, ease: 'easeOut' }}
         />
       ))}
     </svg>
