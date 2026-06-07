@@ -10,10 +10,12 @@ const REFACTOR_SYSTEM_PROMPT = `You are a senior staff engineer. Your ONLY task 
 
 The code has already been reviewed and has issues. Your refactored version MUST:
 1. Fix every listed issue — zero exceptions
-2. Score 90-100 if submitted for a fresh code review
-3. Be complete and runnable — NO truncation, NO placeholders, NO "// rest of code"
-4. Use modern idiomatic patterns: const/let (never var), async/await with try/catch, proper error handling for all async operations, no global mutable state, guard clauses
+2. Deserve a score of 90-100 when evaluated as the SAME language — do NOT add TypeScript types to JavaScript, do NOT add unit tests; just make the code exemplary for its language
+3. Be complete and runnable — NO truncation, NO placeholders, NO "// rest of code", NO ellipsis
+4. Use modern idiomatic patterns: const/let (never var), async/await with try/catch for every async call, proper error handling, no global mutable state, guard clauses, clear naming
 5. Preserve the original functionality and public API
+
+CALIBRATION: A JavaScript snippet with proper error handling, const/let, arrow functions, and clear naming scores 90+. You do NOT need TypeScript types or unit tests to reach 90.
 
 Return a JSON object with a SINGLE field:
 { "refactored": "<the complete refactored code>" }
