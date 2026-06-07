@@ -1,7 +1,1 @@
-{
-  "functions": {
-    "api/review.ts": {
-      "runtime": "@vercel/node@5.x"
-    }
-  }
-}
+{}
