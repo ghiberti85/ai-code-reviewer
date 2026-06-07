@@ -21,46 +21,45 @@ function getInterpolatedColor(value: number): string {
   return '#FF2244'
 }
 
-interface Particle {
-  id: number
-  x: number
-  y: number
-  angle: number
-  distance: number
-  delay: number
-}
-
 function Particles({ score }: { score: number }) {
-  const particles: Particle[] = Array.from({ length: 12 }, (_, i) => ({
-    id: i,
-    x: 64,
-    y: 64,
-    angle: (i / 12) * 360,
-    distance: 55 + Math.random() * 25,
-    delay: i * 0.05,
-  }))
+  const [visible, setVisible] = useState(false)
 
-  if (score < 90) return null
+  useEffect(() => {
+    setVisible(false)
+    if (score < 90) return
+    // wait for the counter animation to finish before rendering particles
+    const t = setTimeout(() => setVisible(true), 1050)
+    return () => clearTimeout(t)
+  }, [score])
+
+  if (!visible) return null
+
+  const particles = Array.from({ length: 12 }, (_, i) => {
+    const angle = (i / 12) * 360
+    const distance = 55 + (i % 3) * 10
+    const rad = (angle * Math.PI) / 180
+    return {
+      id: i,
+      tx: 64 + Math.cos(rad) * distance,
+      ty: 64 + Math.sin(rad) * distance,
+      delay: i * 0.04,
+    }
+  })
 
   return (
     <svg width="128" height="128" viewBox="0 0 128 128" style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
-      {particles.map(p => {
-        const rad = (p.angle * Math.PI) / 180
-        const tx = p.x + Math.cos(rad) * p.distance
-        const ty = p.y + Math.sin(rad) * p.distance
-        return (
-          <motion.circle
-            key={p.id}
-            cx={p.x}
-            cy={p.y}
-            r={2.5}
-            fill="#00FF88"
-            initial={{ cx: p.x, cy: p.y, opacity: 0, r: 2.5 }}
-            animate={{ cx: tx, cy: ty, opacity: [0, 1, 0], r: 1 }}
-            transition={{ duration: 0.8, delay: 0.9 + p.delay, ease: 'easeOut' }}
-          />
-        )
-      })}
+      {particles.map(p => (
+        <motion.circle
+          key={p.id}
+          cx={64}
+          cy={64}
+          r={2.5}
+          fill="#00FF88"
+          initial={{ cx: 64, cy: 64, opacity: 0, r: 2.5 }}
+          animate={{ cx: p.tx, cy: p.ty, opacity: [0, 1, 0], r: 1 }}
+          transition={{ duration: 0.7, delay: p.delay, ease: 'easeOut' }}
+        />
+      ))}
     </svg>
   )
 }
@@ -79,8 +78,7 @@ export function ScoreBadge({ score }: Props) {
     let step = 0
     const timer = setInterval(() => {
       step++
-      const progress = step / steps
-      const eased = 1 - Math.pow(1 - progress, 3)
+      const eased = 1 - Math.pow(1 - step / steps, 3)
       setDisplayed(Math.round(eased * score))
       if (step >= steps) clearInterval(timer)
     }, interval)
