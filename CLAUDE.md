@@ -9,7 +9,7 @@ Guia de arquitetura e convenções para o Claude Code. Leia este arquivo antes d
 ```
 Browser → React App (Vite) → POST /api/review → Vercel Edge Function → Groq API (streaming SSE)
                                                                               ↓
-                                                              moonshotai/kimi-k2-instruct
+                                                              openai/gpt-oss-120b
 ```
 
 O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON acumulado), que o frontend consome linha a linha e exibe em tempo real.
@@ -24,7 +24,7 @@ O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON ac
 | Animações | Framer Motion | 11 |
 | Async state | TanStack Query | 5 |
 | Syntax highlight | Shiki | 1 |
-| LLM | Groq API (Kimi K2) | free tier |
+| LLM | Groq API (GPT-OSS 120B) | free tier |
 | Backend | Vercel Edge Functions | — |
 | Storage | localStorage | — |
 | Testes | Vitest + React Testing Library | — |
