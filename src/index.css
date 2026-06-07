@@ -137,8 +137,14 @@ body {
   /* ── Results panel ── */
   .results-panel {
     padding: 16px !important;
-    padding-bottom: 24px !important;
+    /* clear fixed bottom tab bar (56px) + safe area + breathing room */
+    padding-bottom: calc(56px + env(safe-area-inset-bottom) + 24px) !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
+
+  /* Prevent wide code blocks from causing viewport zoom */
+  .panel-left, .panel-right { max-width: 100vw; overflow-x: hidden; }
 
   /* ── History ── */
   .history-grid { grid-template-columns: 1fr !important; }

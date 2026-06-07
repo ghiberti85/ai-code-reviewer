@@ -64,7 +64,9 @@ function getHighlighter() {
 
 
 export function DiffView({ original, refactored, language, fullscreen }: Props) {
-  const [mode, setMode] = useState<DiffMode>('split')
+  // On mobile, split view is unusable — default to unified and hide the split toggle
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+  const [mode, setMode] = useState<DiffMode>(isMobile ? 'unified' : 'split')
   const [leftHtml, setLeftHtml] = useState('')
   const [rightHtml, setRightHtml] = useState('')
   const [copied, setCopied] = useState(false)
@@ -87,14 +89,27 @@ export function DiffView({ original, refactored, language, fullscreen }: Props) 
   const addedCount = diffLines.filter(l => l.type === 'added').length
   const removedCount = diffLines.filter(l => l.type === 'removed').length
 
+  const btnStyle = (active: boolean) => ({
+    background: active ? '#00FF881A' : 'transparent',
+    color: active ? '#00FF88' : '#8A9E95',
+    border: '1px solid ' + (active ? '#00FF8844' : '#2A3530'),
+    borderRadius: '4px',
+    padding: isMobile ? '6px 14px' : '3px 10px',
+    cursor: 'pointer',
+    fontFamily: 'JetBrains Mono, monospace',
+    fontSize: '11px',
+    textTransform: 'capitalize' as const,
+    minHeight: isMobile ? '36px' : 'auto',
+  })
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{ display: 'flex', flexDirection: 'column', gap: '0', border: '1px solid #1E2220', borderRadius: '10px', overflow: 'hidden' }}
+      style={{ display: 'flex', flexDirection: 'column', border: '1px solid #1E2220', borderRadius: '10px', overflow: 'hidden', minWidth: 0 }}
     >
       {/* toolbar */}
-      <div style={{ background: '#141716', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid #1E2220' }}>
+      <div style={{ background: '#141716', padding: isMobile ? '10px 12px' : '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #1E2220', flexShrink: 0 }}>
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', fontWeight: 700, color: '#00FF88', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
           Diff
         </span>
@@ -102,38 +117,25 @@ export function DiffView({ original, refactored, language, fullscreen }: Props) 
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#FF2244' }}>−{removedCount}</span>
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
-          {(['split', 'unified'] as DiffMode[]).map(m => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              style={{
-                background: mode === m ? '#00FF881A' : 'transparent',
-                color: mode === m ? '#00FF88' : '#8A9E95',
-                border: '1px solid ' + (mode === m ? '#00FF8844' : '#2A3530'),
-                borderRadius: '4px',
-                padding: '3px 10px',
-                cursor: 'pointer',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '11px',
-                textTransform: 'capitalize',
-              }}
-            >
-              {m}
-            </button>
-          ))}
+          {!isMobile && (
+            <>
+              <button key="split" onClick={() => setMode('split')} style={btnStyle(mode === 'split')}>split</button>
+              <button key="unified" onClick={() => setMode('unified')} style={btnStyle(mode === 'unified')}>unified</button>
+            </>
+          )}
           <button
             onClick={copy}
-            style={{ background: 'transparent', border: '1px solid #2A3530', color: '#8A9E95', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', marginLeft: '4px' }}
+            style={{ ...btnStyle(false), marginLeft: isMobile ? 0 : '4px' }}
           >
-            {copied ? '✓ Copied' : 'Copy'}
+            {copied ? '✓' : 'Copy'}
           </button>
         </div>
       </div>
 
-      {mode === 'split' ? (
+      {mode === 'split' && !isMobile ? (
         <SplitView leftHtml={leftHtml} rightHtml={rightHtml} fullscreen={fullscreen} />
       ) : (
-        <UnifiedView diffLines={diffLines} fullscreen={fullscreen} />
+        <UnifiedView diffLines={diffLines} fullscreen={fullscreen} isMobile={isMobile} />
       )}
     </motion.div>
   )
@@ -205,21 +207,22 @@ function groupIntoHunks(lines: DiffLine[], context = 3): Hunk[] {
   return hunks
 }
 
-function UnifiedView({ diffLines, fullscreen }: { diffLines: DiffLine[]; fullscreen?: boolean }) {
+function UnifiedView({ diffLines, fullscreen, isMobile }: { diffLines: DiffLine[]; fullscreen?: boolean; isMobile?: boolean }) {
   const hunks = groupIntoHunks(diffLines)
-  const maxH = fullscreen ? 'calc(100vh - 100px)' : '520px'
+  const maxH = fullscreen ? 'calc(100vh - 100px)' : isMobile ? '60vh' : '520px'
+  // Gutter width: narrower on mobile to give more space to code
+  const gutterW = isMobile ? 24 : 38
 
   return (
-    <div style={{ overflow: 'auto', maxHeight: maxH, background: '#0D0F0E' }}>
+    <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: maxH, background: '#0D0F0E', WebkitOverflowScrolling: 'touch' as any }}>
       {hunks.map((hunk, hi) => (
         <div key={hi}>
-          {/* hunk separator */}
           {hi > 0 && (
             <div style={{
               background: '#0A1520',
               borderTop: '1px solid #1E2220',
               borderBottom: '1px solid #1E2220',
-              padding: '2px 16px',
+              padding: '2px 12px',
               fontFamily: 'JetBrains Mono, monospace',
               fontSize: '11px',
               color: '#2A5070',
@@ -228,45 +231,47 @@ function UnifiedView({ diffLines, fullscreen }: { diffLines: DiffLine[]; fullscr
               @@ ···
             </div>
           )}
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', lineHeight: '1.8' }}>
+          <table style={{ borderCollapse: 'collapse', fontFamily: 'JetBrains Mono, monospace', fontSize: isMobile ? '11px' : '12px', lineHeight: '1.8', minWidth: '100%' }}>
             <tbody>
               {hunk.lines.map((line, li) => {
                 const isAdded = line.type === 'added'
                 const isRemoved = line.type === 'removed'
                 return (
                   <tr key={li} style={{ background: isAdded ? 'rgba(0,255,136,0.07)' : isRemoved ? 'rgba(255,34,68,0.07)' : 'transparent' }}>
-                    {/* line numbers gutter */}
+                    {/* line numbers gutter — single column on mobile */}
+                    {!isMobile && (
+                      <td style={{
+                        width: gutterW, minWidth: gutterW, textAlign: 'right',
+                        padding: '0 6px', color: '#2A3530', userSelect: 'none',
+                        background: isAdded ? 'rgba(0,255,136,0.04)' : isRemoved ? 'rgba(255,34,68,0.04)' : '#0A0C0B',
+                        borderRight: '1px solid #1A2020',
+                        fontSize: '10px',
+                      }}>
+                        {line.lineNo.left ?? ''}
+                      </td>
+                    )}
                     <td style={{
-                      width: 38, minWidth: 38, textAlign: 'right',
-                      padding: '0 8px', color: '#2A3530', userSelect: 'none',
+                      width: gutterW, minWidth: gutterW, textAlign: 'right',
+                      padding: '0 6px', color: '#2A3530', userSelect: 'none',
                       background: isAdded ? 'rgba(0,255,136,0.04)' : isRemoved ? 'rgba(255,34,68,0.04)' : '#0A0C0B',
                       borderRight: '1px solid #1A2020',
-                      fontSize: '11px',
+                      fontSize: '10px',
                     }}>
-                      {line.lineNo.left ?? ''}
-                    </td>
-                    <td style={{
-                      width: 38, minWidth: 38, textAlign: 'right',
-                      padding: '0 8px', color: '#2A3530', userSelect: 'none',
-                      background: isAdded ? 'rgba(0,255,136,0.04)' : isRemoved ? 'rgba(255,34,68,0.04)' : '#0A0C0B',
-                      borderRight: '1px solid #1A2020',
-                      fontSize: '11px',
-                    }}>
-                      {line.lineNo.right ?? ''}
+                      {line.lineNo.right ?? line.lineNo.left ?? ''}
                     </td>
                     {/* +/- prefix */}
                     <td style={{
-                      width: 22, minWidth: 22, textAlign: 'center',
-                      fontWeight: 700, fontSize: '13px',
+                      width: 18, minWidth: 18, textAlign: 'center',
+                      fontWeight: 700, fontSize: '12px',
                       color: isAdded ? '#00FF88' : isRemoved ? '#FF2244' : 'transparent',
                       userSelect: 'none',
                       borderRight: `2px solid ${isAdded ? '#00FF8828' : isRemoved ? '#FF224428' : 'transparent'}`,
                     }}>
                       {isAdded ? '+' : isRemoved ? '−' : ''}
                     </td>
-                    {/* code content */}
+                    {/* code content — pre for horizontal scroll within the table */}
                     <td style={{
-                      padding: '0 16px',
+                      padding: '0 12px',
                       color: isAdded ? '#CCFFE8' : isRemoved ? '#FFCCD6' : '#5A7A6A',
                       whiteSpace: 'pre',
                       fontWeight: isAdded || isRemoved ? 500 : 400,
