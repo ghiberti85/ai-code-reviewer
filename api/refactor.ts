@@ -115,7 +115,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!groqRes.ok) {
     const err = await groqRes.text()
     console.error('Groq API error:', groqRes.status, err)
-    return new Response(JSON.stringify({ error: 'Refactor failed. Please try again.' }), {
+    return new Response(JSON.stringify({ error: 'Refactor failed. Please try again.', groq_status: groqRes.status }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
     })
