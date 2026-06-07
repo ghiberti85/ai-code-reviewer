@@ -8,13 +8,14 @@ AI-powered code review tool. Paste your code, get an instant quality score, issu
 
 ## Features
 
-- **Score 0–100** — animated circular gauge with color by range
-- **Issues** — error / warning / suggestion with line numbers and concrete fixes
+- **Score 0–100** — animated circular gauge with color by range; counter animates from 0 to final score; particles burst for scores ≥ 90, shake animation for scores < 30
+- **Issues** — error / warning / suggestion with line numbers and concrete fixes; click any fix to copy it to clipboard
 - **Positives** — what the code already does well
-- **Refactored code** — complete rewrite that fixes every listed issue
+- **Refactored code** — complete rewrite that fixes every listed issue; fetched automatically via `/api/refactor` when the review skips it
 - **Diff view** — split (Shiki-highlighted) and unified (GitHub-style hunks) modes
 - **Fullscreen diff** — expand the diff to full screen, close with Esc
 - **Streaming** — results appear as they are generated (~3s first token)
+- **Editor status bar** — live line count, file size in KB, and selected language shown below the editor
 - **Share link** — encode the full review in a URL, no backend needed
 - **File upload** — drag & drop or click to upload, language auto-detected from extension
 - **Embed badge** — HTML/Markdown snippets to add a score badge to your README
@@ -47,11 +48,13 @@ TypeScript · JavaScript · Python · Go · Rust · Java · C# · CSS · SQL
 ## Architecture
 
 ```
-Browser → React App → POST /api/review → Vercel Edge Function → Groq API (streaming)
+Browser → React App → POST /api/review  → Vercel Edge Function → Groq API (streaming)
+                    → POST /api/refactor → Vercel Edge Function → Groq API (streaming)
 ```
 
-The Edge Function proxies the request to Groq, keeping the API key server-side only.
+Both Edge Functions proxy requests to Groq, keeping the API key server-side only.
 The SSE stream from Groq is transformed into a plain-text stream that the browser reads chunk by chunk.
+`/api/refactor` is called automatically by `useReview` when a review completes with `score < 90` and `refactored` is `null`.
 
 ---
 
@@ -75,7 +78,7 @@ vercel dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).  
-`vercel dev` runs both Vite (frontend) and the Edge Function (`/api/review`) together.
+`vercel dev` runs both Vite (frontend) and the Edge Functions (`/api/review`, `/api/refactor`) together.
 
 ### Running tests
 
@@ -139,24 +142,26 @@ See [docs/SECURITY.md](docs/SECURITY.md) for the full threat model.
 
 ```
 ai-code-reviewer/
-├── api/review.ts              # Vercel Edge Function — Groq proxy
+├── api/
+│   ├── review.ts              # Vercel Edge Function — Groq review proxy (streaming)
+│   └── refactor.ts            # Vercel Edge Function — Groq refactor proxy (streaming)
 ├── src/
-│   ├── App.tsx                # Main layout, tabs, editor, results
+│   ├── App.tsx                # Main layout, tabs, editor, results; EditorStatusBar component
 │   ├── index.css              # Global styles + responsive media queries
 │   ├── types/review.ts        # ReviewResult, Issue, HistoryEntry types
 │   ├── lib/
 │   │   ├── groq.ts            # System prompt + language config
 │   │   └── share.ts           # URL-based review sharing (base64)
 │   ├── hooks/
-│   │   ├── useReview.ts       # Streaming state machine
+│   │   ├── useReview.ts       # State machine: idle→streaming→refactoring→done|error
 │   │   ├── useHistory.ts      # localStorage CRUD (20-entry cap)
 │   │   └── useMediaQuery.ts   # Responsive breakpoint hook
 │   ├── components/
 │   │   ├── FileDropZone.tsx   # File upload + drag & drop
 │   │   ├── EmbedBadge.tsx     # Portfolio badge generator
 │   │   └── Review/
-│   │       ├── ScoreBadge.tsx # Animated SVG score gauge
-│   │       ├── IssueCard.tsx  # Severity-coded issue card
+│   │       ├── ScoreBadge.tsx # Animated SVG score gauge (counter, particles, shake)
+│   │       ├── IssueCard.tsx  # Severity-coded issue card with click-to-copy fix
 │   │       └── DiffView.tsx   # Split + Unified diff
 │   └── test/                  # 45 tests across 7 files
 ├── .github/workflows/

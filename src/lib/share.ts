@@ -18,7 +18,24 @@ export function decodeShare(encoded: string): SharePayload | null {
     const binary = atob(encoded)
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0))
     const json = new TextDecoder().decode(bytes)
-    return JSON.parse(json) as SharePayload
+    const parsed = JSON.parse(json)
+    // Runtime schema validation — reject malformed share payloads that could
+    // cause rendering errors or pass unexpected values to child components.
+    if (
+      parsed === null ||
+      typeof parsed !== 'object' ||
+      typeof parsed.code !== 'string' ||
+      typeof parsed.language !== 'string' ||
+      parsed.result === null ||
+      typeof parsed.result !== 'object' ||
+      typeof parsed.result.score !== 'number' ||
+      typeof parsed.result.summary !== 'string' ||
+      !Array.isArray(parsed.result.issues) ||
+      !Array.isArray(parsed.result.positives)
+    ) {
+      return null
+    }
+    return parsed as SharePayload
   } catch {
     return null
   }

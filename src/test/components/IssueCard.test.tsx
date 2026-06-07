@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { IssueCard } from '../../components/Review/IssueCard'
 import type { Issue } from '../../types/review'
 
@@ -8,6 +8,14 @@ vi.mock('framer-motion', () => ({
     div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   },
 }))
+
+const writeText = vi.fn().mockResolvedValue(undefined)
+
+beforeEach(() => {
+  writeText.mockClear()
+  ;(navigator.clipboard as any).writeText = writeText
+})
+
 
 const baseIssue: Issue = {
   line: null,
@@ -50,5 +58,27 @@ describe('IssueCard', () => {
   it('renders fix text', () => {
     render(<IssueCard issue={baseIssue} index={0} />)
     expect(screen.getByText('Replace == with ===')).toBeInTheDocument()
+  })
+
+  it('clicking the fix button copies fix text to clipboard', async () => {
+    render(<IssueCard issue={baseIssue} index={0} />)
+    await act(async () => { fireEvent.click(screen.getByTitle('Click to copy fix')) })
+    expect(writeText).toHaveBeenCalledWith('Replace == with ===')
+  })
+
+  it('shows "✓ copied" label after clicking copy', async () => {
+    render(<IssueCard issue={baseIssue} index={0} />)
+    await act(async () => { fireEvent.click(screen.getByTitle('Click to copy fix')) })
+    expect(screen.getByText('✓ copied')).toBeInTheDocument()
+  })
+
+  it('reverts to "fix →" label after 2 seconds', async () => {
+    vi.useFakeTimers()
+    render(<IssueCard issue={baseIssue} index={0} />)
+    await act(async () => { fireEvent.click(screen.getByTitle('Click to copy fix')) })
+    expect(screen.getByText('✓ copied')).toBeInTheDocument()
+    await act(async () => { vi.advanceTimersByTime(2100) })
+    expect(screen.getByText('fix →')).toBeInTheDocument()
+    vi.useRealTimers()
   })
 })
