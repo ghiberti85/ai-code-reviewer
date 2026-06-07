@@ -37,7 +37,7 @@ TypeScript · JavaScript · Python · Go · Rust · Java · C# · CSS · SQL
 | Animations | Framer Motion |
 | Async state | TanStack Query |
 | Syntax highlight | Shiki |
-| LLM | Groq API — `llama-3.3-70b-versatile` (free tier) |
+| LLM | Groq API — `moonshotai/kimi-k2-instruct` (free tier) |
 | Backend | Vercel Edge Functions |
 | Storage | localStorage (no database) |
 | Tests | Vitest + React Testing Library (45 tests) |
