@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/review.ts": {
-      "runtime": "edge"
+      "runtime": "@vercel/node@5.x"
     }
   }
 }

@@ -1,6 +1,5 @@
 import { SYSTEM_PROMPT, buildUserPrompt } from '../src/lib/groq'
 
-export const config = { runtime: 'edge' }
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
