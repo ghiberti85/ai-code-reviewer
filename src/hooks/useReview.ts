@@ -71,5 +71,9 @@ export function useReview() {
     setState({ status: 'idle', result: null, raw: '', error: null })
   }, [])
 
-  return { ...state, runReview, reset }
+  const loadResult = useCallback((result: ReviewResult) => {
+    setState({ status: 'done', result, raw: JSON.stringify(result), error: null })
+  }, [])
+
+  return { ...state, runReview, reset, loadResult }
 }

@@ -1,10 +1,14 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useReview } from './hooks/useReview'
 import { useHistory } from './hooks/useHistory'
 import { ScoreBadge } from './components/Review/ScoreBadge'
 import { IssueCard } from './components/Review/IssueCard'
+import { DiffView } from './components/Review/DiffView'
+import { FileDropZone } from './components/FileDropZone'
+import { EmbedBadge } from './components/EmbedBadge'
 import { LANGUAGES } from './lib/groq'
+import { buildShareUrl, readShareFromUrl } from './lib/share'
 import type { Language, HistoryEntry } from './types/review'
 
 const SAMPLE_CODE = `async function fetchUser(id) {
@@ -272,7 +276,7 @@ function ScoreCircle({ score }: { score: number }) {
   )
 }
 
-function ResultPanel({ result }: { result: import('./types/review').ReviewResult }) {
+function ResultPanel({ result, originalCode, language }: { result: import('./types/review').ReviewResult; originalCode?: string; language?: Language }) {
   const [copied, setCopied] = useState(false)
 
   const copy = useCallback(async (text: string) => {
@@ -317,7 +321,14 @@ function ResultPanel({ result }: { result: import('./types/review').ReviewResult
         </div>
       )}
 
-      {result.refactored && (
+      {result.refactored && originalCode && language && (
+        <div style={S.card}>
+          <div style={S.sectionTitle}>Refactored</div>
+          <DiffView original={originalCode} refactored={result.refactored} language={language} />
+        </div>
+      )}
+
+      {result.refactored && (!originalCode || !language) && (
         <div style={S.card}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div style={S.sectionTitle}>Refactored</div>
@@ -338,13 +349,33 @@ export default function App() {
   const [tab, setTab] = useState<'editor' | 'history'>('editor')
   const [code, setCode] = useState(SAMPLE_CODE)
   const [language, setLanguage] = useState<Language>('javascript')
-  const { status, result, error, runReview } = useReview()
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
+  const { status, result, error, runReview, loadResult } = useReview()
   const { history, addEntry, clearHistory } = useHistory()
+
+  // Load shared review from URL on mount
+  useEffect(() => {
+    const shared = readShareFromUrl()
+    if (shared) {
+      setCode(shared.code)
+      setLanguage(shared.language)
+      loadResult(shared.result)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [loadResult])
 
   const handleRun = useCallback(async () => {
     const res = await runReview(code, language)
     if (res) addEntry(code, language, res)
   }, [code, language, runReview, addEntry])
+
+  const handleShare = useCallback(async () => {
+    if (!result) return
+    const url = buildShareUrl({ code, language, result })
+    await navigator.clipboard.writeText(url)
+    setShareStatus('copied')
+    setTimeout(() => setShareStatus('idle'), 2000)
+  }, [result, code, language])
 
   const isLoading = status === 'streaming'
 
@@ -374,6 +405,7 @@ export default function App() {
                     <option key={l.value} value={l.value}>{l.label}</option>
                   ))}
                 </select>
+                <FileDropZone onLoad={(c, l) => { setCode(c); setLanguage(l) }} />
                 <button onClick={handleRun} disabled={isLoading || !code.trim()} style={S.runBtn(isLoading || !code.trim())}>
                   {isLoading ? 'Analyzing...' : '▶ Run Review'}
                 </button>
@@ -393,9 +425,13 @@ export default function App() {
                   REVIEW OUTPUT
                 </span>
                 {status === 'done' && result && (
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#00FF88' }}>
-                    ✓ Complete
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#00FF88' }}>✓ Complete</span>
+                    <button onClick={handleShare} style={{ ...S.copyBtn, borderColor: '#00FF8844', color: shareStatus === 'copied' ? '#00FF88' : '#8A9E95' }}>
+                      {shareStatus === 'copied' ? '✓ Link copied' : '⇧ Share'}
+                    </button>
+                    <EmbedBadge score={result.score} language={language} />
+                  </div>
                 )}
               </div>
 
@@ -417,7 +453,7 @@ export default function App() {
 
                 {status === 'done' && result && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <ResultPanel result={result} />
+                    <ResultPanel result={result} originalCode={code} language={language} />
                   </motion.div>
                 )}
               </div>
