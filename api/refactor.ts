@@ -89,7 +89,7 @@ export default async function handler(req: Request): Promise<Response> {
       ],
       stream: true,
       temperature: 0.2,
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
     }),
   })

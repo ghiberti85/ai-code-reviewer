@@ -58,6 +58,10 @@ It MUST:
 When score is 0-89: refactored MUST be a full code string — never null, never empty.
 When score is 90-100: refactored may be null — the code is already excellent as-is.
 
+SELF-CHECK before returning — apply the checklist to YOUR OWN refactored code:
+  If all 7 items pass → the refactored code deserves 90+. Set score accordingly when reviewing it.
+  If you are reviewing code where all 7 items already pass → score MUST be 90 or higher. Do not invent issues.
+
 IMPORTANT: Return ONLY valid JSON. No markdown fences, no prose outside the JSON object.`
 
 function buildUserPrompt(code: string, language: string): string {
@@ -123,8 +127,8 @@ export default async function handler(req: Request): Promise<Response> {
         { role: 'user', content: buildUserPrompt(code, language) },
       ],
       stream: true,
-      temperature: 0.3,
-      max_tokens: 4096,
+      temperature: 0.2,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
     }),
   })
