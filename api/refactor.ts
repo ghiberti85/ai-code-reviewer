@@ -99,7 +99,7 @@ export default async function handler(req: Request): Promise<Response> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'qwen/qwen3-32b',
+      model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: REFACTOR_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },
@@ -107,7 +107,6 @@ export default async function handler(req: Request): Promise<Response> {
       stream: true,
       temperature: 0.2,
       max_tokens: 8192,
-      reasoning_effort: 'none',
       response_format: { type: 'json_object' },
     }),
   })
