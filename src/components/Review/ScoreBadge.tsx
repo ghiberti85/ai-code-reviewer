@@ -55,8 +55,8 @@ function Particles({ score }: { score: number }) {
             cy={p.y}
             r={2.5}
             fill="#00FF88"
-            initial={{ cx: p.x, cy: p.y, opacity: 1, r: 2.5 }}
-            animate={{ cx: tx, cy: ty, opacity: 0, r: 1 }}
+            initial={{ cx: p.x, cy: p.y, opacity: 0, r: 2.5 }}
+            animate={{ cx: tx, cy: ty, opacity: [0, 1, 0], r: 1 }}
             transition={{ duration: 0.8, delay: 0.9 + p.delay, ease: 'easeOut' }}
           />
         )
