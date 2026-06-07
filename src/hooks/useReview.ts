@@ -2,10 +2,23 @@ import { useState, useCallback } from 'react'
 import type { ReviewResult, Language } from '../types/review'
 
 interface ReviewState {
-  status: 'idle' | 'streaming' | 'done' | 'error'
+  status: 'idle' | 'streaming' | 'refactoring' | 'done' | 'error'
   result: ReviewResult | null
   raw: string
   error: string | null
+}
+
+async function streamToString(res: Response): Promise<string> {
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('No response body')
+  const decoder = new TextDecoder()
+  let accumulated = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    accumulated += decoder.decode(value, { stream: true })
+  }
+  return accumulated
 }
 
 export function useReview() {
@@ -26,9 +39,7 @@ export function useReview() {
         body: JSON.stringify({ code, language }),
       })
 
-      if (!res.ok) {
-        throw new Error(`API error: ${res.status}`)
-      }
+      if (!res.ok) throw new Error(`API error: ${res.status}`)
 
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response body')
@@ -58,6 +69,31 @@ export function useReview() {
       } catch {
         throw new Error('Failed to parse review response')
       }
+
+      // If score < 90 and model skipped refactored, fetch it automatically
+      const needsRefactored = result.score < 90 && !result.refactored
+      if (needsRefactored) {
+        setState({ status: 'refactoring', result, raw: accumulated, error: null })
+
+        try {
+          const refactorRes = await fetch('/api/refactor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, language, issues: result.issues }),
+          })
+
+          if (refactorRes.ok) {
+            const refactorRaw = await streamToString(refactorRes)
+            const parsed = JSON.parse(refactorRaw)
+            if (typeof parsed.refactored === 'string' && parsed.refactored.trim()) {
+              result = { ...result, refactored: parsed.refactored }
+            }
+          }
+        } catch {
+          // refactor fetch failed — proceed with result as-is
+        }
+      }
+
       setState({ status: 'done', result, raw: accumulated, error: null })
       return result
     } catch (err) {

@@ -515,7 +515,7 @@ export default function App() {
     setTimeout(() => setShareStatus('idle'), 2000)
   }, [result, code, language])
 
-  const isLoading = status === 'streaming'
+  const isLoading = status === 'streaming' || status === 'refactoring'
 
   return (
     <div style={S.app}>
@@ -588,6 +588,17 @@ export default function App() {
                   </div>
                 )}
                 {status === 'streaming' && <StreamingDots />}
+                {status === 'refactoring' && result && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <ResultPanel result={result} originalCode={code} language={language} />
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '4px 0' }}>
+                      {[0, 1, 2].map(i => (
+                        <motion.span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#FFD700', display: 'block' }} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }} />
+                      ))}
+                      <span style={{ color: '#8A9E95', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', marginLeft: '6px' }}>Generating refactored code...</span>
+                    </div>
+                  </motion.div>
+                )}
                 {status === 'error' && (
                   <div style={{ background: 'rgba(255,34,68,0.08)', border: '1px solid #FF224433', borderRadius: '8px', padding: '20px', color: '#FF2244', fontFamily: 'JetBrains Mono, monospace', fontSize: '13px' }}>
                     Error: {error}
