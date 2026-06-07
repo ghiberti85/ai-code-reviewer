@@ -37,6 +37,12 @@ src/test/
     └── review.test.ts          # validação de inputs da Edge Function
 ```
 
+## Cobertura atual de componentes
+
+Componentes com testes: `ScoreBadge`, `IssueCard`, `EditorStatusBar`
+
+Componentes **sem testes** (pendentes de cobertura): `FileDropZone`, `EmbedBadge`, `DiffView`
+
 ## Filosofia
 
 - **Testar comportamento, não implementação** — evite testar detalhes internos como nomes de variáveis privadas
