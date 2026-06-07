@@ -38,7 +38,8 @@ TypeScript · JavaScript · Python · Go · Rust · Java · C# · CSS · SQL
 | Animations | Framer Motion |
 | Async state | TanStack Query |
 | Syntax highlight | Shiki |
-| LLM | Groq API — `llama-4-scout-17b-16e-instruct` (free tier) |
+| LLM (review) | Groq API — `meta-llama/llama-4-scout-17b-16e-instruct` (free tier) |
+| LLM (refactor) | Groq API — `qwen/qwen3-32b` (free tier) |
 | Backend | Vercel Edge Functions |
 | Storage | localStorage (no database) |
 | Tests | Vitest + React Testing Library (45 tests) |
@@ -54,7 +55,8 @@ Browser → React App → POST /api/review  → Vercel Edge Function → Groq AP
 
 Both Edge Functions proxy requests to Groq, keeping the API key server-side only.
 The SSE stream from Groq is transformed into a plain-text stream that the browser reads chunk by chunk.
-`/api/refactor` is called automatically by `useReview` when a review completes with `score < 90` and `refactored` is `null`.
+`/api/review` uses `meta-llama/llama-4-scout-17b-16e-instruct` (temperature 0.3, max_tokens 4096).
+`/api/refactor` uses `qwen/qwen3-32b` (temperature 0.2, max_tokens 8192) and is called when `score < 90` and `refactored` is `null`.
 
 ---
 

@@ -10,7 +10,8 @@ Guia de arquitetura e convenções para o Claude Code. Leia este arquivo antes d
 Browser → React App (Vite) → POST /api/review  → Vercel Edge Function → Groq API (streaming SSE)
                            → POST /api/refactor → Vercel Edge Function → Groq API (streaming SSE)
                                                                                ↓
-                                                               qwen/qwen3-32b (max_tokens: 8192, temperature: 0.2)
+                                          /api/review:  meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 4096, temperature: 0.3)
+                                          /api/refactor: qwen/qwen3-32b (max_tokens: 8192, temperature: 0.2)
 ```
 
 O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON acumulado), que o frontend consome linha a linha e exibe em tempo real.
@@ -27,7 +28,8 @@ O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON ac
 | Animações | Framer Motion | 11 |
 | Async state | TanStack Query | 5 |
 | Syntax highlight | Shiki | 1 |
-| LLM | Groq API (Llama 4 Scout) | free tier |
+| LLM (review) | Groq API — `meta-llama/llama-4-scout-17b-16e-instruct` | free tier |
+| LLM (refactor) | Groq API — `qwen/qwen3-32b` | free tier |
 | Backend | Vercel Edge Functions | — |
 | Storage | localStorage | — |
 | Testes | Vitest + React Testing Library | — |
@@ -89,7 +91,7 @@ ai-code-reviewer/
 │   ├── review.ts              # Edge Function — análise de código (streaming) — sem imports de src/
 │   └── refactor.ts            # Edge Function — refatoração focada (streaming) — sem imports de src/
 ├── src/
-│   ├── App.tsx                # Layout, tabs, editor, resultados; componente EditorStatusBar inline
+│   ├── App.tsx                # Layout, tabs, editor, resultados; sub-componentes inline: StreamingDots, ScoreCircle, ResultPanel, HistoryPage, DiffFullscreen
 │   ├── main.tsx               # Entry point + QueryClient
 │   ├── index.css              # Estilos globais + media queries responsivas
 │   ├── types/
@@ -98,7 +100,7 @@ ai-code-reviewer/
 │   │   ├── groq.ts            # SYSTEM_PROMPT, LANGUAGES, buildUserPrompt
 │   │   └── share.ts           # encode/decode review em URL base64
 │   ├── hooks/
-│   │   ├── useReview.ts       # Máquina de estados: idle→streaming→refactoring→done|error
+│   │   ├── useReview.ts       # Máquina de estados: idle→streaming→done|error
 │   │   ├── useHistory.ts      # localStorage CRUD, cap 20 entradas
 │   │   └── useMediaQuery.ts   # Hook para breakpoints responsivos
 │   ├── components/
@@ -141,11 +143,13 @@ ai-code-reviewer/
 - Validar todos os inputs antes de chamar a Groq API
 - Logar erros da Groq server-side via `console.error`, nunca repassar payload raw ao cliente
 - Manter `export const config = { runtime: 'edge' }` — remove essa linha e o runtime quebra
-- Ambas as funções usam `model: 'qwen/qwen3-32b'`, `max_tokens: 8192`, `temperature: 0.2`
+- `api/review.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 4096`, `temperature: 0.3`
+- `api/refactor.ts` usa `model: 'qwen/qwen3-32b'`, `max_tokens: 8192`, `temperature: 0.2`
 - `api/refactor.ts` recebe `{ code, language, issues, summary }` e retorna stream de texto com o código refatorado
 
 ### Estratégia two-pass (refactored automático)
-- `useReview.ts` monitora o resultado do streaming: se `score < 90` e `refactored === null`, transita para estado `refactoring` e chama `POST /api/refactor`
+- `useReview.ts` tem os estados: `idle → streaming → done | error` (sem estado `refactoring` separado)
+- A chamada a `/api/refactor` é feita externamente (ex: em `App.tsx` ou hook de orquestração) quando o review termina com `score < 90` e `refactored === null`
 - O output de `/api/refactor` é acumulado em streaming e injetado em `result.refactored`
 - Saídas de `\n` e `\t` literais (escaped) são normalizadas para quebras de linha e tabs reais
 
