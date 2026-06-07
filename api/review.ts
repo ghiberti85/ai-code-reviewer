@@ -129,6 +129,7 @@ export default async function handler(req: Request): Promise<Response> {
       stream: true,
       temperature: 0.2,
       max_tokens: 8192,
+      reasoning_effort: 'none',
       response_format: { type: 'json_object' },
     }),
   })
