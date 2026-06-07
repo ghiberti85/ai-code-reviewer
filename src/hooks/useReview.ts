@@ -43,7 +43,21 @@ export function useReview() {
         setState(prev => ({ ...prev, raw: accumulated }))
       }
 
-      const result = JSON.parse(accumulated) as ReviewResult
+      let result: ReviewResult
+      try {
+        const parsed = JSON.parse(accumulated)
+        if (
+          typeof parsed.score !== 'number' ||
+          typeof parsed.summary !== 'string' ||
+          !Array.isArray(parsed.issues) ||
+          !Array.isArray(parsed.positives)
+        ) {
+          throw new Error('Invalid response schema')
+        }
+        result = parsed as ReviewResult
+      } catch {
+        throw new Error('Failed to parse review response')
+      }
       setState({ status: 'done', result, raw: accumulated, error: null })
       return result
     } catch (err) {

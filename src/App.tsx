@@ -7,14 +7,16 @@ import { IssueCard } from './components/Review/IssueCard'
 import { LANGUAGES } from './lib/groq'
 import type { Language, HistoryEntry } from './types/review'
 
-const SAMPLE_CODE = `function fetchUser(id) {
-  var url = "https://api.example.com/users/" + id
-  fetch(url).then(function(res) {
-    return res.json()
-  }).then(function(data) {
-    console.log(data)
-    document.getElementById("user").innerHTML = data.name
-  })
+const SAMPLE_CODE = `async function fetchUser(id) {
+  try {
+    const res = await fetch("https://api.example.com/users/" + id)
+    if (!res.ok) throw new Error("Request failed: " + res.status)
+    const data = await res.json()
+    const el = document.getElementById("user")
+    if (el) el.textContent = data.name
+  } catch (err) {
+    console.error("fetchUser error:", err)
+  }
 }`
 
 const S = {

@@ -1,15 +1,49 @@
-import { SYSTEM_PROMPT, buildUserPrompt } from '../src/lib/groq'
+import { SYSTEM_PROMPT, buildUserPrompt, LANGUAGES } from '../src/lib/groq'
 
+const MAX_CODE_SIZE = 50_000 // ~50KB
+const ALLOWED_LANGUAGES = new Set(LANGUAGES.map(l => l.value))
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  const { code, language } = await req.json() as { code: string; language: string }
+  if (!process.env.GROQ_API_KEY) {
+    console.error('GROQ_API_KEY is not set')
+    return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
-  if (!code?.trim()) {
+  let body: { code?: unknown; language?: unknown }
+  try {
+    body = await req.json()
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const { code, language } = body
+
+  if (typeof code !== 'string' || !code.trim()) {
     return new Response(JSON.stringify({ error: 'No code provided' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  if (code.length > MAX_CODE_SIZE) {
+    return new Response(JSON.stringify({ error: 'Code exceeds maximum size of 50KB' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  if (typeof language !== 'string' || !ALLOWED_LANGUAGES.has(language)) {
+    return new Response(JSON.stringify({ error: 'Invalid language' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     })
@@ -36,8 +70,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!groqRes.ok) {
     const err = await groqRes.text()
-    return new Response(JSON.stringify({ error: err }), {
-      status: groqRes.status,
+    console.error('Groq API error:', groqRes.status, err)
+    return new Response(JSON.stringify({ error: 'Analysis failed. Please try again.' }), {
+      status: 502,
       headers: { 'Content-Type': 'application/json' },
     })
   }
