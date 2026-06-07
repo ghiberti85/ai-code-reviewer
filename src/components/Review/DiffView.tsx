@@ -8,6 +8,7 @@ interface Props {
   original: string
   refactored: string
   language: Language
+  fullscreen?: boolean
 }
 
 type DiffMode = 'split' | 'unified'
@@ -62,7 +63,7 @@ function getHighlighter() {
 }
 
 
-export function DiffView({ original, refactored, language }: Props) {
+export function DiffView({ original, refactored, language, fullscreen }: Props) {
   const [mode, setMode] = useState<DiffMode>('split')
   const [leftHtml, setLeftHtml] = useState('')
   const [rightHtml, setRightHtml] = useState('')
@@ -130,15 +131,16 @@ export function DiffView({ original, refactored, language }: Props) {
       </div>
 
       {mode === 'split' ? (
-        <SplitView leftHtml={leftHtml} rightHtml={rightHtml} />
+        <SplitView leftHtml={leftHtml} rightHtml={rightHtml} fullscreen={fullscreen} />
       ) : (
-        <UnifiedView diffLines={diffLines} />
+        <UnifiedView diffLines={diffLines} fullscreen={fullscreen} />
       )}
     </motion.div>
   )
 }
 
-function SplitView({ leftHtml, rightHtml }: { leftHtml: string; rightHtml: string }) {
+function SplitView({ leftHtml, rightHtml, fullscreen }: { leftHtml: string; rightHtml: string; fullscreen?: boolean }) {
+  const maxH = fullscreen ? 'calc(100vh - 100px)' : '420px'
   if (!leftHtml || !rightHtml) {
     return (
       <div style={{ padding: '24px', color: '#8A9E95', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', textAlign: 'center' }}>
@@ -153,7 +155,7 @@ function SplitView({ leftHtml, rightHtml }: { leftHtml: string; rightHtml: strin
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', color: '#FF2244' }}>− original</span>
         </div>
         <div
-          style={{ overflow: 'auto', maxHeight: '420px', fontSize: '12px', lineHeight: '1.7' }}
+          style={{ overflow: 'auto', maxHeight: maxH, fontSize: '12px', lineHeight: '1.7' }}
           dangerouslySetInnerHTML={{ __html: leftHtml }}
         />
       </div>
@@ -162,7 +164,7 @@ function SplitView({ leftHtml, rightHtml }: { leftHtml: string; rightHtml: strin
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', color: '#00FF88' }}>+ refactored</span>
         </div>
         <div
-          style={{ overflow: 'auto', maxHeight: '420px', fontSize: '12px', lineHeight: '1.7' }}
+          style={{ overflow: 'auto', maxHeight: maxH, fontSize: '12px', lineHeight: '1.7' }}
           dangerouslySetInnerHTML={{ __html: rightHtml }}
         />
       </div>
@@ -203,11 +205,12 @@ function groupIntoHunks(lines: DiffLine[], context = 3): Hunk[] {
   return hunks
 }
 
-function UnifiedView({ diffLines }: { diffLines: DiffLine[] }) {
+function UnifiedView({ diffLines, fullscreen }: { diffLines: DiffLine[]; fullscreen?: boolean }) {
   const hunks = groupIntoHunks(diffLines)
+  const maxH = fullscreen ? 'calc(100vh - 100px)' : '520px'
 
   return (
-    <div style={{ overflow: 'auto', maxHeight: '520px', background: '#0D0F0E' }}>
+    <div style={{ overflow: 'auto', maxHeight: maxH, background: '#0D0F0E' }}>
       {hunks.map((hunk, hi) => (
         <div key={hi}>
           {/* hunk separator */}
