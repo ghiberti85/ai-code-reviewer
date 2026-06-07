@@ -83,7 +83,7 @@ Content-Security-Policy: default-src 'self'; connect-src 'self' https://api.groq
 
 ---
 
-## Rate Limiting (a implementar)
+## Rate Limiting (not yet implemented — future mitigation)
 
 O endpoint `/api/review` não tem rate limiting atualmente. Para projetos em produção com tráfego público, implementar:
 

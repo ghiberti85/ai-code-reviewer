@@ -28,6 +28,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (!process.env.GROQ_API_KEY) {
+    console.error('GROQ_API_KEY is not set')
     return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
