@@ -33,22 +33,26 @@ Return a single JSON object with this exact schema:
 
 SCORING GUIDE (be accurate and honest):
 - 90-100: Production-ready, follows all best practices, handles errors, clean and idiomatic
-- 70-89: Good code, only minor style/optimization issues
-- 50-69: Working but has multiple real problems affecting maintainability or safety
-- 30-49: Significant issues — bugs, bad patterns, missing error handling
-- 0-29: Critical problems — crashes, security holes, fundamentally broken patterns
+- 70-89: Good code with real improvement opportunities — REFACTORED REQUIRED
+- 50-69: Working but has multiple real problems affecting maintainability or safety — REFACTORED REQUIRED
+- 30-49: Significant issues — bugs, bad patterns, missing error handling — REFACTORED REQUIRED
+- 0-29: Critical problems — crashes, security holes, fundamentally broken patterns — REFACTORED REQUIRED
 
 STRICT RULES FOR THE "refactored" FIELD:
-The refactored code is NOT a light cleanup — it is a COMPLETE REWRITE that demonstrates mastery. It MUST:
+The refactored code is NOT a light cleanup — it is a COMPLETE REWRITE that demonstrates mastery.
+ANY score below 90 means you MUST provide refactored. This includes scores of 70, 75, 80, 85, 88 — all of them.
+It MUST:
 1. Fix EVERY issue listed in the issues array — zero exceptions
-2. Score 90-100 if submitted for a fresh review — this is non-negotiable
+2. Score 90-100 if submitted for a fresh review — this is the definition of success
 3. Be complete and runnable — NO truncation, NO "// ... rest of code", NO ellipsis, NO placeholders
-4. Use modern, idiomatic patterns for the language (const/let not var, arrow functions, async/await with try/catch, proper types, no global mutable state, guard clauses, etc.)
+4. Use modern, idiomatic patterns (const/let not var, async/await with try/catch, proper types, no global mutable state, guard clauses, named exports, etc.)
 5. Include proper error handling for every async operation and external call
-6. Preserve the original functionality — same public API, same behavior
+6. Preserve the original functionality and public API
 
-When score < 90: refactored MUST be a full string, never null.
-When score >= 90: refactored may be null only if the code is genuinely excellent as-is.
+When score is 0-89: refactored MUST be a full, complete code string — never null, never empty.
+When score is 90-100: refactored may be null only if the code is already genuinely excellent.
+
+REMEMBER: A score of 70 is NOT good enough to omit refactored. 80 is NOT good enough. Only 90+ earns a null refactored.
 
 IMPORTANT: Return ONLY valid JSON. No markdown fences, no prose outside the JSON object.`
 

@@ -244,12 +244,16 @@ function ResultPanel({
   originalCode,
   language,
   onExpandDiff,
+  onRetry,
 }: {
   result: import('./types/review').ReviewResult
   originalCode?: string
   language?: Language
   onExpandDiff?: () => void
+  onRetry?: () => void
 }) {
+  const refactoredMissing = result.score < 90 && !result.refactored
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -309,6 +313,25 @@ function ResultPanel({
           <pre style={{ margin: 0, background: '#0D0F0E', borderRadius: '6px', padding: '16px', overflow: 'auto', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', lineHeight: 1.7, color: '#D4E8DC' }}>
             {result.refactored}
           </pre>
+        </div>
+      )}
+
+      {refactoredMissing && (
+        <div style={{ ...S.card, border: '1px solid #FFD70033', background: 'rgba(255,215,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+          <div>
+            <div style={{ ...S.sectionTitle, marginBottom: '4px', color: '#FFD700' }}>Refactored</div>
+            <p style={{ margin: 0, color: '#8A9E95', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px' }}>
+              The model skipped the refactored code (score {result.score}/100 should require it).
+            </p>
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              style={{ ...S.copyBtn, borderColor: '#FFD70033', color: '#FFD700', whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              ↺ Retry
+            </button>
+          )}
         </div>
       )}
     </>
@@ -577,6 +600,7 @@ export default function App() {
                       originalCode={code}
                       language={language}
                       onExpandDiff={() => setDiffExpanded(true)}
+                      onRetry={handleRun}
                     />
                   </motion.div>
                 )}
