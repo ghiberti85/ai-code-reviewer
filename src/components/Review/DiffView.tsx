@@ -61,26 +61,6 @@ function getHighlighter() {
   return highlighterPromise
 }
 
-const LINE_BG: Record<DiffLine['type'], string> = {
-  added: 'rgba(0,255,136,0.08)',
-  removed: 'rgba(255,34,68,0.08)',
-  unchanged: 'transparent',
-}
-const LINE_BORDER: Record<DiffLine['type'], string> = {
-  added: 'rgba(0,255,136,0.3)',
-  removed: 'rgba(255,34,68,0.3)',
-  unchanged: 'transparent',
-}
-const LINE_PREFIX: Record<DiffLine['type'], string> = {
-  added: '+',
-  removed: '-',
-  unchanged: ' ',
-}
-const PREFIX_COLOR: Record<DiffLine['type'], string> = {
-  added: '#00FF88',
-  removed: '#FF2244',
-  unchanged: '#2A3530',
-}
 
 export function DiffView({ original, refactored, language }: Props) {
   const [mode, setMode] = useState<DiffMode>('split')
@@ -190,29 +170,113 @@ function SplitView({ leftHtml, rightHtml }: { leftHtml: string; rightHtml: strin
   )
 }
 
+interface Hunk {
+  lines: DiffLine[]
+}
+
+function groupIntoHunks(lines: DiffLine[], context = 3): Hunk[] {
+  const changedIdx = new Set<number>()
+  lines.forEach((l, i) => { if (l.type !== 'unchanged') changedIdx.add(i) })
+  if (changedIdx.size === 0) return [{ lines }]
+
+  const shown = new Set<number>()
+  changedIdx.forEach(i => {
+    for (let d = -context; d <= context; d++) {
+      const idx = i + d
+      if (idx >= 0 && idx < lines.length) shown.add(idx)
+    }
+  })
+
+  const hunks: Hunk[] = []
+  let current: DiffLine[] = []
+  let prevIdx = -1
+
+  Array.from(shown).sort((a, b) => a - b).forEach(idx => {
+    if (prevIdx !== -1 && idx > prevIdx + 1) {
+      hunks.push({ lines: current })
+      current = []
+    }
+    current.push(lines[idx])
+    prevIdx = idx
+  })
+  if (current.length) hunks.push({ lines: current })
+  return hunks
+}
+
 function UnifiedView({ diffLines }: { diffLines: DiffLine[] }) {
+  const hunks = groupIntoHunks(diffLines)
+
   return (
-    <div style={{ overflow: 'auto', maxHeight: '480px', background: '#0D0F0E' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', lineHeight: '1.7' }}>
-        <tbody>
-          {diffLines.map((line, i) => (
-            <tr key={i} style={{ background: LINE_BG[line.type], borderLeft: `3px solid ${LINE_BORDER[line.type]}` }}>
-              <td style={{ width: 36, textAlign: 'right', padding: '0 8px', color: '#2A3530', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                {line.lineNo.left ?? ''}
-              </td>
-              <td style={{ width: 36, textAlign: 'right', padding: '0 8px', color: '#2A3530', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                {line.lineNo.right ?? ''}
-              </td>
-              <td style={{ width: 16, textAlign: 'center', color: PREFIX_COLOR[line.type], userSelect: 'none' }}>
-                {LINE_PREFIX[line.type]}
-              </td>
-              <td style={{ padding: '0 12px', color: '#D4E8DC', whiteSpace: 'pre' }}>
-                {line.content}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div style={{ overflow: 'auto', maxHeight: '520px', background: '#0D0F0E' }}>
+      {hunks.map((hunk, hi) => (
+        <div key={hi}>
+          {/* hunk separator */}
+          {hi > 0 && (
+            <div style={{
+              background: '#0A1520',
+              borderTop: '1px solid #1E2220',
+              borderBottom: '1px solid #1E2220',
+              padding: '2px 16px',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '11px',
+              color: '#2A5070',
+              userSelect: 'none',
+            }}>
+              @@ ···
+            </div>
+          )}
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', lineHeight: '1.8' }}>
+            <tbody>
+              {hunk.lines.map((line, li) => {
+                const isAdded = line.type === 'added'
+                const isRemoved = line.type === 'removed'
+                return (
+                  <tr key={li} style={{ background: isAdded ? 'rgba(0,255,136,0.07)' : isRemoved ? 'rgba(255,34,68,0.07)' : 'transparent' }}>
+                    {/* line numbers gutter */}
+                    <td style={{
+                      width: 38, minWidth: 38, textAlign: 'right',
+                      padding: '0 8px', color: '#2A3530', userSelect: 'none',
+                      background: isAdded ? 'rgba(0,255,136,0.04)' : isRemoved ? 'rgba(255,34,68,0.04)' : '#0A0C0B',
+                      borderRight: '1px solid #1A2020',
+                      fontSize: '11px',
+                    }}>
+                      {line.lineNo.left ?? ''}
+                    </td>
+                    <td style={{
+                      width: 38, minWidth: 38, textAlign: 'right',
+                      padding: '0 8px', color: '#2A3530', userSelect: 'none',
+                      background: isAdded ? 'rgba(0,255,136,0.04)' : isRemoved ? 'rgba(255,34,68,0.04)' : '#0A0C0B',
+                      borderRight: '1px solid #1A2020',
+                      fontSize: '11px',
+                    }}>
+                      {line.lineNo.right ?? ''}
+                    </td>
+                    {/* +/- prefix */}
+                    <td style={{
+                      width: 22, minWidth: 22, textAlign: 'center',
+                      fontWeight: 700, fontSize: '13px',
+                      color: isAdded ? '#00FF88' : isRemoved ? '#FF2244' : 'transparent',
+                      userSelect: 'none',
+                      borderRight: `2px solid ${isAdded ? '#00FF8828' : isRemoved ? '#FF224428' : 'transparent'}`,
+                    }}>
+                      {isAdded ? '+' : isRemoved ? '−' : ''}
+                    </td>
+                    {/* code content */}
+                    <td style={{
+                      padding: '0 16px',
+                      color: isAdded ? '#CCFFE8' : isRemoved ? '#FFCCD6' : '#5A7A6A',
+                      whiteSpace: 'pre',
+                      fontWeight: isAdded || isRemoved ? 500 : 400,
+                    }}>
+                      {line.content || ' '}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   )
 }
