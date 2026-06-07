@@ -38,6 +38,9 @@ body {
   display: none;
 }
 
+.copy-all-btn { display: none; }
+.diff-close-mobile-bar { display: none; }
+
 /* ── Diff fullscreen overlay ─────────────────────────── */
 .diff-fullscreen {
   position: fixed;
@@ -56,7 +59,7 @@ body {
 
   .app-main {
     grid-template-columns: 1fr;
-    height: calc(100vh - 56px - 52px); /* minus bottom tabs */
+    height: calc(100vh - 56px - 56px); /* minus header + bottom tabs */
     overflow: hidden;
   }
 
@@ -66,13 +69,15 @@ body {
   .panel-left.mobile-hidden,
   .panel-right.mobile-hidden { display: none !important; }
 
+  /* ── Bottom tab bar ── */
   .mobile-tabs {
     display: flex;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 52px;
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom);
     background: #141716;
     border-top: 1px solid #1E2220;
     z-index: 50;
@@ -84,7 +89,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 4px;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -93,31 +98,84 @@ body {
     font-weight: 600;
     color: #8A9E95;
     transition: color 0.15s;
+    min-height: 44px; /* touch target */
   }
 
   .mobile-tab.active { color: #00FF88; }
   .mobile-tab.active .mobile-tab-dot { background: #00FF88; }
 
   .mobile-tab-dot {
-    width: 4px; height: 4px;
+    width: 5px; height: 5px;
     border-radius: 50%;
     background: transparent;
     transition: background 0.15s;
   }
 
+  /* ── Code panel header ── */
   .panel-header-scroll {
     flex-wrap: wrap;
     gap: 8px !important;
     padding: 10px 16px !important;
   }
 
-  .run-btn-mobile { margin-left: 0 !important; width: 100%; }
+  .run-btn-mobile { margin-left: 0 !important; width: 100%; min-height: 44px; }
 
+  /* ── Copy All button (mobile only) ── */
+  .copy-all-btn {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+    min-height: 36px;
+  }
+
+  /* ── Expand diff button (mobile) ── */
+  .expand-diff-btn {
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+    min-height: 40px;
+  }
+
+  /* ── Results panel ── */
+  .results-panel {
+    padding: 16px !important;
+    padding-bottom: 24px !important;
+  }
+
+  /* ── History ── */
   .history-grid { grid-template-columns: 1fr !important; }
   .history-detail { display: none !important; }
   .history-detail.active { display: flex !important; }
 
-  .results-panel { padding: 16px !important; }
+  /* ── Diff fullscreen on mobile ── */
+  .diff-esc-hint { display: none; }
+
+  .diff-close-btn {
+    padding: 10px 20px !important;
+    font-size: 13px !important;
+    min-height: 44px;
+  }
+
+  /* Sticky close bar at bottom of diff overlay */
+  .diff-close-mobile-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 14px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    background: #141716;
+    border-top: 1px solid #1E2220;
+    color: #8A9E95;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    flex-shrink: 0;
+  }
+
+  .diff-close-mobile-bar:active { background: #1E2220; }
 }
 
 /* ── Tablet 769–1024px ───────────────────────────────── */

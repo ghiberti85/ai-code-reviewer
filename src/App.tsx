@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useReview } from './hooks/useReview'
 import { useHistory } from './hooks/useHistory'
@@ -297,6 +297,7 @@ function ResultPanel({
             {onExpandDiff && (
               <button
                 onClick={onExpandDiff}
+                className="expand-diff-btn"
                 style={{ ...S.copyBtn, borderColor: '#00FF8833', color: '#00FF88', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 ⤢ Expand
@@ -448,7 +449,6 @@ function DiffFullscreen({
   language: Language
   onClose: () => void
 }) {
-  // close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
@@ -466,13 +466,17 @@ function DiffFullscreen({
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95', letterSpacing: '0.08em' }}>
           DIFF — ORIGINAL vs REFACTORED
         </span>
-        <button onClick={onClose} style={{ ...S.copyBtn, display: 'flex', alignItems: 'center', gap: '6px' }}>
-          ✕ Close <span style={{ color: '#2A3530', fontSize: '10px' }}>Esc</span>
+        <button onClick={onClose} className="diff-close-btn" style={{ ...S.copyBtn, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          ✕ Close <span className="diff-esc-hint" style={{ color: '#2A3530', fontSize: '10px' }}>Esc</span>
         </button>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '0' }}>
         <DiffView original={original} refactored={refactored} language={language} fullscreen />
       </div>
+      {/* Mobile sticky close bar */}
+      <button onClick={onClose} className="diff-close-mobile-bar">
+        ✕ Fechar diff
+      </button>
     </motion.div>
   )
 }
@@ -486,6 +490,8 @@ export default function App() {
   const [language, setLanguage] = useState<Language>('javascript')
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
   const [diffExpanded, setDiffExpanded] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const { status, result, error, runReview, loadResult } = useReview()
   const { history, addEntry, clearHistory } = useHistory()
@@ -506,6 +512,12 @@ export default function App() {
     const res = await runReview(code, language)
     if (res) addEntry(code, language, res)
   }, [code, language, runReview, addEntry, isMobile])
+
+  const handleCopyAll = useCallback(async () => {
+    await navigator.clipboard.writeText(code)
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+  }, [code])
 
   const handleShare = useCallback(async () => {
     if (!result) return
@@ -544,6 +556,15 @@ export default function App() {
                   {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
                 <FileDropZone onLoad={(c, l) => { setCode(c); setLanguage(l) }} />
+                {isMobile && (
+                  <button
+                    onClick={handleCopyAll}
+                    className="copy-all-btn"
+                    style={{ ...S.copyBtn, color: codeCopied ? '#00FF88' : '#8A9E95', borderColor: codeCopied ? '#00FF8844' : '#2A3530' }}
+                  >
+                    {codeCopied ? '✓ Copied' : '⊡ Copy All'}
+                  </button>
+                )}
                 <button
                   onClick={handleRun}
                   disabled={isLoading || !code.trim()}
@@ -554,6 +575,7 @@ export default function App() {
                 </button>
               </div>
               <textarea
+                ref={textareaRef}
                 value={code}
                 onChange={e => setCode(e.target.value)}
                 style={S.textarea}
@@ -565,17 +587,29 @@ export default function App() {
 
             {/* Right — Results */}
             <div className={`panel-right${isMobile && mobilePanel === 'code' ? ' mobile-hidden' : ''}`}>
-              <div style={{ ...S.panelHeader, justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95', letterSpacing: '0.08em' }}>
-                  REVIEW OUTPUT
-                </span>
+              <div style={{ ...S.panelHeader, justifyContent: 'space-between', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  {isMobile && (
+                    <button
+                      onClick={() => setMobilePanel('code')}
+                      style={{ ...S.copyBtn, display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, padding: '6px 12px' }}
+                    >
+                      ← Code
+                    </button>
+                  )}
+                  {!isMobile && (
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95', letterSpacing: '0.08em' }}>
+                      REVIEW OUTPUT
+                    </span>
+                  )}
+                </div>
                 {status === 'done' && result && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', flexShrink: 0 }}>
                     <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#00FF88' }}>✓</span>
                     <button onClick={handleShare} style={{ ...S.copyBtn, borderColor: '#00FF8833', color: shareStatus === 'copied' ? '#00FF88' : '#8A9E95' }}>
                       {shareStatus === 'copied' ? '✓ Copied' : '⇧ Share'}
                     </button>
-                    <EmbedBadge score={result.score} language={language} />
+                    {!isMobile && <EmbedBadge score={result.score} language={language} />}
                   </div>
                 )}
               </div>
