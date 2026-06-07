@@ -1,7 +1,38 @@
-import { SYSTEM_PROMPT, buildUserPrompt, LANGUAGES } from '../src/lib/groq'
+const ALLOWED_LANGUAGES = new Set([
+  'typescript', 'javascript', 'python', 'go', 'rust', 'java', 'csharp', 'css', 'sql',
+])
 
-const MAX_CODE_SIZE = 50_000 // ~50KB
-const ALLOWED_LANGUAGES = new Set(LANGUAGES.map(l => l.value))
+const MAX_CODE_SIZE = 50_000
+
+const SYSTEM_PROMPT = `You are an expert code reviewer. Analyze the provided code and return a JSON object following this exact schema:
+
+{
+  "score": <number 0-100 representing overall code quality>,
+  "summary": "<2-3 sentence overview of the code quality>",
+  "issues": [
+    {
+      "line": <line number or null if not applicable>,
+      "severity": <"error" | "warning" | "suggestion">,
+      "message": "<what the issue is>",
+      "fix": "<concrete fix with code example>"
+    }
+  ],
+  "positives": ["<thing done well>", ...],
+  "refactored": "<complete refactored version of the code, or null if code is already excellent>"
+}
+
+Scoring guide:
+- 90-100: Excellent, production-ready
+- 70-89: Good, minor improvements needed
+- 50-69: Average, several issues
+- 30-49: Poor, significant problems
+- 0-29: Critical issues
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanation outside the JSON.`
+
+function buildUserPrompt(code: string, language: string): string {
+  return `Review this ${language} code:\n\n${code}`
+}
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
