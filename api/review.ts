@@ -1,3 +1,5 @@
+export const config = { runtime: 'edge' }
+
 const ALLOWED_LANGUAGES = new Set([
   'typescript', 'javascript', 'python', 'go', 'rust', 'java', 'csharp', 'css', 'sql',
 ])
