@@ -65,6 +65,10 @@ export function useReview() {
         ) {
           throw new Error('Invalid response schema')
         }
+        // Normalize escaped newlines the model sometimes emits as literal \n inside JSON strings
+        if (typeof parsed.refactored === 'string') {
+          parsed.refactored = parsed.refactored.replace(/\\n/g, '\n').replace(/\\t/g, '  ')
+        }
         result = parsed as ReviewResult
       } catch {
         throw new Error('Failed to parse review response')
@@ -86,7 +90,8 @@ export function useReview() {
             const refactorRaw = await streamToString(refactorRes)
             const parsed = JSON.parse(refactorRaw)
             if (typeof parsed.refactored === 'string' && parsed.refactored.trim()) {
-              result = { ...result, refactored: parsed.refactored }
+              const normalized = parsed.refactored.replace(/\\n/g, '\n').replace(/\\t/g, '  ')
+              result = { ...result, refactored: normalized }
             }
           }
         } catch {
