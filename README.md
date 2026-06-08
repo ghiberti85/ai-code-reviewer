@@ -15,6 +15,7 @@ AI-powered code review tool. Paste your code, get an instant quality score, issu
 - **Diff view** — split (Shiki-highlighted) and unified (GitHub-style hunks) modes
 - **Fullscreen diff** — expand the diff to full screen, close with Esc
 - **Streaming** — results appear as they are generated (~3s first token)
+- **Line numbers** — desktop editor shows a synchronized line number gutter
 - **Editor status bar** — live line count, file size in KB, and selected language shown below the editor
 - **Share link** — encode the full review in a URL, no backend needed
 - **File upload** — drag & drop or click to upload, language auto-detected from extension

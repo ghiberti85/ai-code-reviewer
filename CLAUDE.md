@@ -155,8 +155,21 @@ ai-code-reviewer/
 
 ### src/lib/groq.ts
 - `SYSTEM_PROMPT` e `LANGUAGES` são a única fonte de verdade do frontend
-- O prompt usa checklist binário de 7 pontos, lista `FORBIDDEN` e bloco `SELF-CHECK`
+- O prompt usa checklist binário estrito — o modelo verifica cada critério e só reporta se LITERALMENTE presente no código
+- O campo `fix` é obrigatório: deve conter 1–3 linhas de código real (nunca vazio, nunca "N/A")
 - Quando alterar o prompt, **também atualizar** a cópia inline em `api/review.ts`
+
+### Editor com line numbers (desktop)
+- `lineGutterRef` é um `div` com `overflow: hidden` ao lado do textarea
+- O scroll é sincronizado via `onScroll` no textarea: `lineGutterRef.current.scrollTop = textareaRef.current.scrollTop`
+- No mobile, o gutter é ocultado via `.line-gutter { display: none !important }` em `src/index.css`
+- O gutter usa `fontSize: '16px'` e `lineHeight: '1.7'` — idêntico ao textarea — para o alinhamento ser exato
+
+### DiffView — Shiki highlight e fallback
+- `getHighlighter()` é um singleton via `highlighterPromise`
+- Se a carga falha, `.catch()` reseta `highlighterPromise = null` para que a próxima montagem faça retry
+- O `useEffect` tem flag `cancelled` para evitar setState em componente desmontado
+- `SplitView` aceita prop `failed` — quando `true`, renderiza o código em `<pre>` puro ao invés de travar em "Loading highlight..."
 
 ### Responsividade
 - Mobile-first via classes CSS em `src/index.css`
