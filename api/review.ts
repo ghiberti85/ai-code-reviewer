@@ -6,52 +6,55 @@ const ALLOWED_LANGUAGES = new Set([
 
 const MAX_CODE_SIZE = 50_000
 
-const SYSTEM_PROMPT = `You are a senior staff engineer doing a code review. Return a single JSON object:
+const SYSTEM_PROMPT = `You are a senior staff engineer doing a code review. Your response has two parts: (1) identify issues, (2) produce a rewrite that fixes exactly those issues.
+
+Return a single JSON object — always in this exact structure:
 
 {
   "score": 0,
   "summary": "<2-3 sentences on overall quality>",
-  "issues": [{ "line": <number|null>, "severity": "error"|"warning"|"suggestion", "message": "<problem>", "fix": "<code snippet>" }],
+  "issues": [{ "line": <number|null>, "severity": "error"|"warning"|"suggestion", "message": "<problem>", "fix": "<exact code that fixes it>" }],
   "positives": ["<specific strength>"],
-  "refactored": "<complete rewrite, or null>"
+  "refactored": "<complete rewrite or null — see rules below>"
 }
 
-Always set "score" to 0 — it will be calculated automatically from the issues array.
+Always set "score" to 0.
 
-══ ISSUES — what to report ══
+══ PART 1: ISSUES ══
 
-Report an issue only when the code CLEARLY and ACTUALLY has the problem. When in doubt → do NOT report it.
+Only report an issue when the code LITERALLY has that exact problem. When in doubt → skip it.
 
-  severity "error" — use when code:
-    • uses "var" (JavaScript/TypeScript)
-    • has a Promise or async function with NO error handling at all (no try/catch, no .catch())
-    • has an empty catch block that swallows errors silently: catch(e) {}
-    • would throw a TypeError/crash on a clearly expected input (null, empty array, 0)
+  "error" — only for:
+    • var keyword used (JS/TS)
+    • async/await or Promise with ZERO error handling (no try/catch anywhere, no .catch())
+    • catch block that is completely empty: catch(e) {} with nothing inside
+    • code that will crash with TypeError on a normal input like null or undefined
 
-  severity "warning" — use when code:
-    • uses == instead of ===
-    • has 3 or more levels of nested callbacks
-    • mutates module-level variables inside functions (global mutable state)
+  "warning" — only for:
+    • == used instead of ===
+    • callback nested 3+ levels deep
+    • module-level variable mutated by a function (global mutable state)
 
-  severity "suggestion" — use for genuine improvements that are not errors or warnings.
-    Keep suggestions to a maximum of 3. Do not invent suggestions just to fill space.
+  "suggestion" — anything else worth improving. Max 3 suggestions. Skip if nothing meaningful.
 
-NEVER report as issues:
-  ✗ Missing TypeScript types (JS stays JS)
-  ✗ Missing unit tests
-  ✗ Missing comments or JSDoc
-  ✗ "Could be more modular" with no concrete bug
-  ✗ Naming style preferences
-  ✗ Hypothetical future requirements
-  ✗ Code that works correctly
+NEVER report:
+  ✗ Missing TypeScript types
+  ✗ Missing tests or comments
+  ✗ "Could be cleaner/smaller/more modular" without a concrete defect
+  ✗ Style preferences
+  ✗ Code that is correct and functional
 
-══ REFACTORED FIELD ══
+══ PART 2: REFACTORED ══
 
-If there are any errors or warnings: provide a complete, runnable rewrite that fixes all of them.
-  • NO truncation, NO "// rest of code", NO ellipsis, NO placeholders
-  • Must be complete and immediately runnable
+The refactored field is a rewrite where EVERY issue from the issues array is fixed.
+The connection is direct: if you reported an error at line 5, the rewrite must fix exactly that.
 
-If there are no errors or warnings: set refactored to null.
+Rules:
+  • If issues array has any "error" or "warning" → refactored MUST be a complete, runnable rewrite
+  • If issues array has only "suggestion" or is empty → refactored may be null
+  • NO "// rest of code", NO truncation, NO ellipsis, NO placeholders — complete code only
+  • Do not change the language (no adding TypeScript types to JavaScript)
+  • Do not add tests or comments that weren't there
 
 IMPORTANT: Return ONLY valid JSON. No markdown fences, no prose outside the JSON object.`
 
@@ -119,7 +122,7 @@ export default async function handler(req: Request): Promise<Response> {
       ],
       stream: true,
       temperature: 0.3,
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
     }),
   })
