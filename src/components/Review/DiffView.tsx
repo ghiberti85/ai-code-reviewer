@@ -82,7 +82,19 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
   }, [original, refactored, shikiLang])
 
   const copy = async () => {
-    await navigator.clipboard.writeText(refactored)
+    try {
+      await navigator.clipboard.writeText(refactored)
+    } catch {
+      // Fallback for iOS Safari which blocks clipboard API without user gesture context
+      const ta = document.createElement('textarea')
+      ta.value = refactored
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      try { document.execCommand('copy') } catch { /* ignore */ }
+      document.body.removeChild(ta)
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
