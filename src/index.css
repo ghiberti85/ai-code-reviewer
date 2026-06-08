@@ -165,6 +165,7 @@ body {
     padding-bottom: calc(56px + env(safe-area-inset-bottom) + 24px) !important;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    overflow-x: hidden !important;
   }
 
   /* Prevent wide code blocks from causing viewport zoom */

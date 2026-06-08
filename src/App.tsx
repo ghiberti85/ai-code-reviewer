@@ -283,7 +283,7 @@ function ResultPanel({
       )}
 
       {result.issues.length > 0 && (
-        <div style={S.card}>
+        <div style={{ ...S.card, overflow: 'hidden' }}>
           <div style={S.sectionTitle}>Issues ({result.issues.length})</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {result.issues.map((issue, i) => (
@@ -294,7 +294,7 @@ function ResultPanel({
       )}
 
       {result.refactored && originalCode && language && (
-        <div style={S.card}>
+        <div style={{ ...S.card, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ ...S.sectionTitle, marginBottom: 0 }}>Refactored</div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
