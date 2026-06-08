@@ -72,7 +72,6 @@ export function useReview() {
       try {
         const parsed = JSON.parse(accumulated)
         if (
-          typeof parsed.score !== 'number' ||
           typeof parsed.summary !== 'string' ||
           !Array.isArray(parsed.issues) ||
           !Array.isArray(parsed.positives)
@@ -82,6 +81,14 @@ export function useReview() {
         if (typeof parsed.refactored === 'string') {
           parsed.refactored = parsed.refactored.replace(/\\n/g, '\n').replace(/\\t/g, '  ')
         }
+        // Calculate score from issues instead of trusting the model's number,
+        // since smaller models anchor to 40-60 regardless of prompt instructions.
+        const penalty = (parsed.issues as Array<{ severity: string }>).reduce((sum, i) => {
+          if (i.severity === 'error') return sum + 13
+          if (i.severity === 'warning') return sum + 7
+          return sum + 2 // suggestion
+        }, 0)
+        parsed.score = Math.max(10, 95 - penalty)
         result = parsed as ReviewResult
       } catch {
         throw new Error('Failed to parse review response')
