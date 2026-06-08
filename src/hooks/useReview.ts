@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
-import type { ReviewResult, Issue, Language } from '../types/review'
+import type { ReviewResult, Language } from '../types/review'
 
 interface ReviewState {
-  status: 'idle' | 'streaming' | 'refactoring' | 're-reviewing' | 'done' | 'error'
+  status: 'idle' | 'streaming' | 'refactoring' | 'done' | 'error'
   result: ReviewResult | null
   raw: string
   error: string | null
@@ -28,38 +28,6 @@ function calcScore(issues: Array<{ severity: string }>): number {
     return sum + 2
   }, 0)
   return Math.max(10, 95 - penalty)
-}
-
-async function fetchReview(code: string, language: string): Promise<{ raw: string; result: ReviewResult } | null> {
-  let res = await fetch('/api/review', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, language }),
-  })
-  if (res.status === 502) {
-    await new Promise(r => setTimeout(r, 2500))
-    res = await fetch('/api/review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, language }),
-    })
-  }
-  if (!res.ok) return null
-
-  const raw = await streamToString(res)
-  try {
-    const parsed = JSON.parse(raw)
-    if (typeof parsed.summary !== 'string' || !Array.isArray(parsed.issues) || !Array.isArray(parsed.positives)) {
-      return null
-    }
-    if (typeof parsed.refactored === 'string') {
-      parsed.refactored = parsed.refactored.replace(/\\n/g, '\n').replace(/\\t/g, '  ')
-    }
-    parsed.score = calcScore(parsed.issues as Array<{ severity: string }>)
-    return { raw, result: parsed as ReviewResult }
-  } catch {
-    return null
-  }
 }
 
 export function useReview() {
@@ -152,24 +120,6 @@ export function useReview() {
           }
         } catch {
           // refactor failed — show result without refactored code
-        }
-      }
-
-      // ── Step 3: re-review the refactored code to get its real score ──────
-      if (result.refactored) {
-        setState({ status: 're-reviewing', result, raw: accumulated, error: null })
-
-        try {
-          const reReview = await fetchReview(result.refactored, language)
-          if (reReview) {
-            result = {
-              ...result,
-              refactoredScore: reReview.result.score,
-              refactoredIssues: reReview.result.issues as Issue[],
-            }
-          }
-        } catch {
-          // re-review failed — show result without refactoredScore
         }
       }
 

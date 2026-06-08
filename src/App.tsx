@@ -294,20 +294,7 @@ function ResultPanel({
       {result.refactored && originalCode && language && (
         <div style={S.card}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ ...S.sectionTitle, marginBottom: 0 }}>Refactored</div>
-              {result.refactoredScore !== undefined && (() => {
-                const from = result.score
-                const to = result.refactoredScore
-                const color = to >= 90 ? '#00FF88' : to >= 70 ? '#88FF00' : to >= 50 ? '#FFD700' : '#FF8800'
-                const improved = to > from
-                return (
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color }}>
-                    {from} → {to}{improved ? ' ↑' : ''}
-                  </span>
-                )
-              })()}
-            </div>
+            <div style={{ ...S.sectionTitle, marginBottom: 0 }}>Refactored</div>
             {onExpandDiff && (
               <button
                 onClick={onExpandDiff}
@@ -544,7 +531,7 @@ export default function App() {
     setTimeout(() => setShareStatus('idle'), 2000)
   }, [result, code, language])
 
-  const isLoading = status === 'streaming' || status === 'refactoring' || status === 're-reviewing'
+  const isLoading = status === 'streaming' || status === 'refactoring'
 
   return (
     <div style={S.app}>
@@ -644,7 +631,7 @@ export default function App() {
                     Error: {error}
                   </div>
                 )}
-                {(status === 'refactoring' || status === 're-reviewing' || status === 'done') && result && (
+                {(status === 'refactoring' || status === 'done') && result && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <ResultPanel
                       result={result}
@@ -659,14 +646,6 @@ export default function App() {
                           <motion.span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#FFD700', display: 'block' }} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }} />
                         ))}
                         <span style={{ color: '#8A9E95', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', marginLeft: '6px' }}>Generating refactored code...</span>
-                      </div>
-                    )}
-                    {status === 're-reviewing' && (
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '4px 0' }}>
-                        {[0, 1, 2].map(i => (
-                          <motion.span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#00FF88', display: 'block' }} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }} />
-                        ))}
-                        <span style={{ color: '#8A9E95', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', marginLeft: '6px' }}>Verifying refactored code...</span>
                       </div>
                     )}
                   </motion.div>

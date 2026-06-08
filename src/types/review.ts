@@ -13,8 +13,6 @@ export interface ReviewResult {
   issues: Issue[]
   positives: string[]
   refactored: string | null
-  refactoredScore?: number
-  refactoredIssues?: Issue[]
 }
 
 export interface HistoryEntry {
