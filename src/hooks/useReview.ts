@@ -103,7 +103,7 @@ export function useReview() {
           let refactorRes = await fetch('/api/refactor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, language, issues: result.issues }),
+            body: JSON.stringify({ code, language, issues: result.issues, summary: result.summary, score: result.score }),
           })
           // Retry once on 502
           if (refactorRes.status === 502) {
@@ -111,7 +111,7 @@ export function useReview() {
             refactorRes = await fetch('/api/refactor', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code, language, issues: result.issues }),
+              body: JSON.stringify({ code, language, issues: result.issues, summary: result.summary, score: result.score }),
             })
           }
           if (refactorRes.ok) {
