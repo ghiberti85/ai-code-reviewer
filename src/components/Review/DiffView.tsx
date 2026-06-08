@@ -70,8 +70,6 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
   const [leftHtml, setLeftHtml] = useState('')
   const [rightHtml, setRightHtml] = useState('')
   const [copied, setCopied] = useState(false)
-  const [showCode, setShowCode] = useState(false)
-  const codeTextareaRef = useRef<HTMLTextAreaElement>(null)
   const shikiLang = LANGUAGES.find(l => l.value === language)?.shiki ?? 'typescript'
   const diffLines = useRef(computeDiff(original, refactored)).current
 
@@ -82,21 +80,12 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
     })
   }, [original, refactored, shikiLang])
 
-  // Desktop copy — clipboard API works reliably outside iOS
   const copyDesktop = async () => {
     try {
       await navigator.clipboard.writeText(refactored)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch { /* ignore */ }
-  }
-
-  // Mobile select-all — triggers iOS native copy menu; far more reliable than clipboard API
-  const selectAllMobile = () => {
-    const ta = codeTextareaRef.current
-    if (!ta) return
-    ta.focus()
-    ta.setSelectionRange(0, ta.value.length)
   }
 
   const addedCount = diffLines.filter(l => l.type === 'added').length
@@ -120,25 +109,17 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
       animate={{ opacity: 1, y: 0 }}
       style={{ display: 'flex', flexDirection: 'column', border: '1px solid #1E2220', borderRadius: '10px', overflow: 'hidden', minWidth: 0 }}
     >
-      {/* toolbar */}
       <div style={{ background: '#141716', padding: isMobile ? '10px 12px' : '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #1E2220', flexShrink: 0 }}>
-        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', fontWeight: 700, color: '#00FF88', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-          Diff
-        </span>
+        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', fontWeight: 700, color: '#00FF88', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Diff</span>
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#00FF88' }}>+{addedCount}</span>
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#FF2244' }}>−{removedCount}</span>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
-          {!isMobile && (
-            <>
-              <button key="split" onClick={() => setMode('split')} style={btnStyle(mode === 'split')}>split</button>
-              <button key="unified" onClick={() => setMode('unified')} style={btnStyle(mode === 'unified')}>unified</button>
-              <button onClick={copyDesktop} style={{ ...btnStyle(false), marginLeft: '4px' }}>
-                {copied ? '✓' : 'Copy'}
-              </button>
-            </>
-          )}
-        </div>
+        {!isMobile && (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
+            <button key="split" onClick={() => setMode('split')} style={btnStyle(mode === 'split')}>split</button>
+            <button key="unified" onClick={() => setMode('unified')} style={btnStyle(mode === 'unified')}>unified</button>
+            <button onClick={copyDesktop} style={{ ...btnStyle(false), marginLeft: '4px' }}>{copied ? '✓' : 'Copy'}</button>
+          </div>
+        )}
       </div>
 
       {mode === 'split' && !isMobile ? (
@@ -146,74 +127,6 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
       ) : (
         <UnifiedView diffLines={diffLines} fullscreen={fullscreen} isMobile={isMobile} />
       )}
-
-      {/* Mobile: show refactored code in a real textarea for native iOS copy */}
-      {isMobile && (
-        <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button
-            onClick={() => setShowCode(s => !s)}
-            style={{
-              padding: '14px',
-              background: '#141716',
-              border: '1px solid #2A3530',
-              borderRadius: '8px',
-              color: '#D4E8DC',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              width: '100%',
-              minHeight: '48px',
-            }}
-          >
-            {showCode ? '▲ Ocultar código refatorado' : '▼ Ver código refatorado'}
-          </button>
-
-          {showCode && (
-            <>
-              <button
-                onClick={selectAllMobile}
-                style={{
-                  padding: '14px',
-                  background: '#00FF8815',
-                  border: '1px solid #00FF8844',
-                  borderRadius: '8px',
-                  color: '#00FF88',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  width: '100%',
-                  minHeight: '48px',
-                }}
-              >
-                ⊡ Selecionar tudo → depois toque "Copiar"
-              </button>
-              <textarea
-                ref={codeTextareaRef}
-                value={refactored}
-                readOnly
-                style={{
-                  width: '100%',
-                  minHeight: '200px',
-                  background: '#0D0F0E',
-                  border: '1px solid #1E2220',
-                  borderRadius: '8px',
-                  color: '#D4E8DC',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '12px',
-                  lineHeight: 1.6,
-                  padding: '12px',
-                  resize: 'vertical',
-                  WebkitUserSelect: 'text',
-                  userSelect: 'text',
-                }}
-              />
-            </>
-          )}
-        </div>
-      )}
-
     </motion.div>
   )
 }
@@ -291,7 +204,7 @@ function UnifiedView({ diffLines, fullscreen, isMobile }: { diffLines: DiffLine[
   const gutterW = isMobile ? 24 : 38
 
   return (
-    <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: maxH, background: '#0D0F0E', WebkitOverflowScrolling: 'touch' as any }}>
+    <div style={{ overflowX: isMobile ? 'hidden' : 'auto', overflowY: 'auto', maxHeight: maxH, background: '#0D0F0E', WebkitOverflowScrolling: 'touch' as any }}>
       {hunks.map((hunk, hi) => (
         <div key={hi}>
           {hi > 0 && (
@@ -350,7 +263,8 @@ function UnifiedView({ diffLines, fullscreen, isMobile }: { diffLines: DiffLine[
                     <td style={{
                       padding: '0 12px',
                       color: isAdded ? '#CCFFE8' : isRemoved ? '#FFCCD6' : '#5A7A6A',
-                      whiteSpace: 'pre',
+                      whiteSpace: isMobile ? 'pre-wrap' : 'pre',
+                      wordBreak: isMobile ? 'break-all' : undefined,
                       fontWeight: isAdded || isRemoved ? 500 : 400,
                     }}>
                       {line.content || ' '}
