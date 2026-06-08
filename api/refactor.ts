@@ -99,7 +99,7 @@ export default async function handler(req: Request): Promise<Response> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       messages: [
         { role: 'system', content: REFACTOR_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },

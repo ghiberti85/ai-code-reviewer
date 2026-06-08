@@ -129,14 +129,14 @@ export default async function handler(req: Request): Promise<Response> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: buildUserPrompt(code, language) },
       ],
       stream: true,
       temperature: 0.3,
-      max_tokens: 8192,
+      max_tokens: 4096,
       response_format: { type: 'json_object' },
     }),
   })
