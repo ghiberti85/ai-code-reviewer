@@ -283,7 +283,7 @@ function ResultPanel({
       )}
 
       {result.issues.length > 0 && (
-        <div style={{ ...S.card, overflow: 'hidden' }}>
+        <div style={S.card}>
           <div style={S.sectionTitle}>Issues ({result.issues.length})</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {result.issues.map((issue, i) => (
@@ -294,30 +294,30 @@ function ResultPanel({
       )}
 
       {result.refactored && originalCode && language && (
-        <div style={{ ...S.card, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <div style={{ ...S.sectionTitle, marginBottom: 0 }}>Refactored</div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {onApplyRefactored && (
-                <button
-                  onClick={() => onApplyRefactored(result.refactored!)}
-                  style={{ ...S.copyBtn, borderColor: '#00FF8844', color: '#00FF88', background: '#00FF8810', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}
-                >
-                  ↙ Aplicar no editor
-                </button>
-              )}
-              {onExpandDiff && (
-                <button
-                  onClick={onExpandDiff}
-                  className="expand-diff-btn"
-                  style={{ ...S.copyBtn, borderColor: '#00FF8833', color: '#00FF88', display: 'flex', alignItems: 'center', gap: '5px' }}
-                >
-                  ⤢ Expand
-                </button>
-              )}
-            </div>
+        <div style={S.card}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <div style={{ ...S.sectionTitle, marginBottom: 0, flex: 1 }}>Refactored</div>
+            {onApplyRefactored && (
+              <button
+                onClick={() => onApplyRefactored(result.refactored!)}
+                style={{ ...S.copyBtn, borderColor: '#00FF8844', color: '#00FF88', background: '#00FF8810', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}
+              >
+                ↙ Aplicar
+              </button>
+            )}
+            {onExpandDiff && (
+              <button
+                onClick={onExpandDiff}
+                className="expand-diff-btn"
+                style={{ ...S.copyBtn, borderColor: '#00FF8833', color: '#00FF88', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                ⤢ Expand
+              </button>
+            )}
           </div>
-          <DiffView original={originalCode} refactored={result.refactored} language={language} />
+          <div style={{ overflow: 'hidden', borderRadius: '6px' }}>
+            <DiffView original={originalCode} refactored={result.refactored} language={language} />
+          </div>
         </div>
       )}
 
