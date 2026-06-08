@@ -10,8 +10,8 @@ Guia de arquitetura e convenções para o Claude Code. Leia este arquivo antes d
 Browser → React App (Vite) → POST /api/review  → Vercel Edge Function → Groq API (streaming SSE)
                            → POST /api/refactor → Vercel Edge Function → Groq API (streaming SSE)
                                                                                ↓
-                                          /api/review:  meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 4096, temperature: 0.3)
-                                          /api/refactor: qwen/qwen3-32b (max_tokens: 8192, temperature: 0.2)
+                                          /api/review:  meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 8192, temperature: 0.3)
+                                          /api/refactor: meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 8192, temperature: 0.2)
 ```
 
 O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON acumulado), que o frontend consome linha a linha e exibe em tempo real.
@@ -29,7 +29,7 @@ O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON ac
 | Async state | TanStack Query | 5 |
 | Syntax highlight | Shiki | 1 |
 | LLM (review) | Groq API — `meta-llama/llama-4-scout-17b-16e-instruct` | free tier |
-| LLM (refactor) | Groq API — `qwen/qwen3-32b` | free tier |
+| LLM (refactor) | Groq API — `meta-llama/llama-4-scout-17b-16e-instruct` | free tier |
 | Backend | Vercel Edge Functions | — |
 | Storage | localStorage | — |
 | Testes | Vitest + React Testing Library | — |
@@ -100,7 +100,7 @@ ai-code-reviewer/
 │   │   ├── groq.ts            # SYSTEM_PROMPT, LANGUAGES, buildUserPrompt
 │   │   └── share.ts           # encode/decode review em URL base64
 │   ├── hooks/
-│   │   ├── useReview.ts       # Máquina de estados: idle→streaming→done|error
+│   │   ├── useReview.ts       # Máquina de estados: idle→streaming→refactoring→done|error; calcScore client-side
 │   │   ├── useHistory.ts      # localStorage CRUD, cap 20 entradas
 │   │   └── useMediaQuery.ts   # Hook para breakpoints responsivos
 │   ├── components/
@@ -143,8 +143,8 @@ ai-code-reviewer/
 - Validar todos os inputs antes de chamar a Groq API
 - Logar erros da Groq server-side via `console.error`, nunca repassar payload raw ao cliente
 - Manter `export const config = { runtime: 'edge' }` — remove essa linha e o runtime quebra
-- `api/review.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 4096`, `temperature: 0.3`
-- `api/refactor.ts` usa `model: 'qwen/qwen3-32b'`, `max_tokens: 8192`, `temperature: 0.2`
+- `api/review.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 8192`, `temperature: 0.3`
+- `api/refactor.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 8192`, `temperature: 0.2`
 - `api/refactor.ts` recebe `{ code, language, issues, summary }` e retorna stream de texto com o código refatorado
 
 ### Estratégia two-pass (refactored automático)
@@ -155,8 +155,21 @@ ai-code-reviewer/
 
 ### src/lib/groq.ts
 - `SYSTEM_PROMPT` e `LANGUAGES` são a única fonte de verdade do frontend
-- O prompt usa checklist binário de 7 pontos, lista `FORBIDDEN` e bloco `SELF-CHECK`
+- O prompt usa checklist binário estrito — o modelo verifica cada critério e só reporta se LITERALMENTE presente no código
+- O campo `fix` é obrigatório: deve conter 1–3 linhas de código real (nunca vazio, nunca "N/A")
 - Quando alterar o prompt, **também atualizar** a cópia inline em `api/review.ts`
+
+### Editor com line numbers (desktop)
+- `lineGutterRef` é um `div` com `overflow: hidden` ao lado do textarea
+- O scroll é sincronizado via `onScroll` no textarea: `lineGutterRef.current.scrollTop = textareaRef.current.scrollTop`
+- No mobile, o gutter é ocultado via `.line-gutter { display: none !important }` em `src/index.css`
+- O gutter usa `fontSize: '16px'` e `lineHeight: '1.7'` — idêntico ao textarea — para o alinhamento ser exato
+
+### DiffView — Shiki highlight e fallback
+- `getHighlighter()` é um singleton via `highlighterPromise`
+- Se a carga falha, `.catch()` reseta `highlighterPromise = null` para que a próxima montagem faça retry
+- O `useEffect` tem flag `cancelled` para evitar setState em componente desmontado
+- `SplitView` aceita prop `failed` — quando `true`, renderiza o código em `<pre>` puro ao invés de travar em "Loading highlight..."
 
 ### Responsividade
 - Mobile-first via classes CSS em `src/index.css`

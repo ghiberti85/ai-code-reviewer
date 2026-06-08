@@ -31,17 +31,30 @@ src/test/
 │   └── useReview.test.ts       # streaming state machine
 ├── components/
 │   ├── ScoreBadge.test.tsx     # score + cores
-│   ├── IssueCard.test.tsx      # severidades + conteúdo
-│   └── EditorStatusBar.test.tsx  # line count, file size, language display
+│   ├── IssueCard.test.tsx      # severidades + copy-to-clipboard
+│   ├── EditorStatusBar.test.tsx  # line count, file size, language display
+│   ├── FileDropZone.test.tsx   # upload, drag & drop, validação de tamanho
+│   └── EmbedBadge.test.tsx     # renderização, copy snippet, preview
 └── api/
-    └── review.test.ts          # validação de inputs da Edge Function
+    ├── review.test.ts          # validação de inputs da Edge Function
+    └── refactor.test.ts        # validação de inputs + sanitização de issues
 ```
 
 ## Cobertura atual de componentes
 
-Componentes com testes: `ScoreBadge`, `IssueCard`, `EditorStatusBar`
+Componentes com testes: `ScoreBadge`, `IssueCard`, `EditorStatusBar`, `FileDropZone`, `EmbedBadge`
 
-Componentes **sem testes** (pendentes de cobertura): `FileDropZone`, `EmbedBadge`, `DiffView`
+Componentes **sem testes** (pendentes de cobertura): `DiffView`
+
+## Notas sobre score nos testes
+
+O score é calculado deterministicamente no cliente — o modelo sempre retorna `score: 0`. Os testes do `useReview` verificam o score calculado:
+- 0 issues → score 95
+- 1 error → score 82 (95 - 13)
+- 1 warning → score 88 (95 - 7)
+- 1 suggestion → score 93 (95 - 2)
+
+Se a lógica de `calcScore` mudar, atualizar os testes em `src/test/hooks/useReview.test.ts`.
 
 ## Filosofia
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useReview } from './hooks/useReview'
 import { useHistory } from './hooks/useHistory'
@@ -133,7 +133,8 @@ const S = {
     resize: 'none' as const,
     padding: '20px',
     fontFamily: 'JetBrains Mono, monospace',
-    fontSize: '13px',
+    // 16px minimum prevents iOS auto-zoom on focus
+    fontSize: '16px',
     lineHeight: '1.7',
     overflow: 'auto',
     tabSize: 2,
@@ -180,6 +181,38 @@ const S = {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
+function EditorStatusBar({ code, language }: { code: string; language: Language }) {
+  const lines = code ? code.split('\n').length : 0
+  const bytes = new TextEncoder().encode(code).length
+  const kb = (bytes / 1024).toFixed(1)
+  const nearLimit = bytes > 45_000
+  const overLimit = bytes > 50_000
+
+  return (
+    <div style={{
+      padding: '4px 20px',
+      borderTop: '1px solid #1E2220',
+      background: '#141716',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '16px',
+      flexShrink: 0,
+    }}>
+      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95' }}>
+        {lines} {lines === 1 ? 'line' : 'lines'}
+      </span>
+      <span style={{ color: '#2A3530', fontSize: '11px' }}>·</span>
+      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: overLimit ? '#FF2244' : nearLimit ? '#FFD700' : '#8A9E95' }}>
+        {kb} KB{nearLimit ? ' ⚠' : ''}
+      </span>
+      <span style={{ color: '#2A3530', fontSize: '11px' }}>·</span>
+      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95' }}>
+        {language}
+      </span>
+    </div>
+  )
+}
+
 function StreamingDots() {
   return (
     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '16px 0' }}>
@@ -212,12 +245,18 @@ function ResultPanel({
   originalCode,
   language,
   onExpandDiff,
+  onRetry,
+  onApplyRefactored,
 }: {
   result: import('./types/review').ReviewResult
   originalCode?: string
   language?: Language
   onExpandDiff?: () => void
+  onRetry?: () => void
+  onApplyRefactored?: (code: string) => void
 }) {
+  const refactoredMissing = result.score < 90 && !result.refactored
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -256,18 +295,29 @@ function ResultPanel({
 
       {result.refactored && originalCode && language && (
         <div style={S.card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <div style={{ ...S.sectionTitle, marginBottom: 0 }}>Refactored</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <div style={{ ...S.sectionTitle, marginBottom: 0, flex: 1 }}>Refactored</div>
+            {onApplyRefactored && (
+              <button
+                onClick={() => onApplyRefactored(result.refactored!)}
+                style={{ ...S.copyBtn, borderColor: '#00FF8844', color: '#00FF88', background: '#00FF8810', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}
+              >
+                ↙ Aplicar
+              </button>
+            )}
             {onExpandDiff && (
               <button
                 onClick={onExpandDiff}
+                className="expand-diff-btn"
                 style={{ ...S.copyBtn, borderColor: '#00FF8833', color: '#00FF88', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 ⤢ Expand
               </button>
             )}
           </div>
-          <DiffView original={originalCode} refactored={result.refactored} language={language} />
+          <div style={{ overflow: 'hidden', borderRadius: '6px' }}>
+            <DiffView original={originalCode} refactored={result.refactored} language={language} />
+          </div>
         </div>
       )}
 
@@ -277,6 +327,25 @@ function ResultPanel({
           <pre style={{ margin: 0, background: '#0D0F0E', borderRadius: '6px', padding: '16px', overflow: 'auto', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', lineHeight: 1.7, color: '#D4E8DC' }}>
             {result.refactored}
           </pre>
+        </div>
+      )}
+
+      {refactoredMissing && (
+        <div style={{ ...S.card, border: '1px solid #FFD70033', background: 'rgba(255,215,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+          <div>
+            <div style={{ ...S.sectionTitle, marginBottom: '4px', color: '#FFD700' }}>Refactored</div>
+            <p style={{ margin: 0, color: '#8A9E95', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px' }}>
+              The model skipped the refactored code (score {result.score}/100 should require it).
+            </p>
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              style={{ ...S.copyBtn, borderColor: '#FFD70033', color: '#FFD700', whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              ↺ Retry
+            </button>
+          )}
         </div>
       )}
     </>
@@ -393,7 +462,6 @@ function DiffFullscreen({
   language: Language
   onClose: () => void
 }) {
-  // close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
@@ -407,16 +475,17 @@ function DiffFullscreen({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <div style={{ ...S.panelHeader, justifyContent: 'space-between' }}>
+      {/* Header respects safe-area-inset-top so it never hides behind status bar */}
+      <div className="diff-fullscreen-header" style={{ ...S.panelHeader, justifyContent: 'space-between' }}>
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95', letterSpacing: '0.08em' }}>
           DIFF — ORIGINAL vs REFACTORED
         </span>
-        <button onClick={onClose} style={{ ...S.copyBtn, display: 'flex', alignItems: 'center', gap: '6px' }}>
-          ✕ Close <span style={{ color: '#2A3530', fontSize: '10px' }}>Esc</span>
+        <button onClick={onClose} className="diff-close-btn" style={{ ...S.copyBtn, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          ✕ Close <span className="diff-esc-hint" style={{ color: '#2A3530', fontSize: '10px' }}>Esc</span>
         </button>
       </div>
-      <div style={{ flex: 1, overflow: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '0' }}>
-        <DiffView original={original} refactored={refactored} language={language} fullscreen />
+      <div style={{ flex: 1, overflow: 'auto', padding: '16px', display: 'flex', flexDirection: 'column' }}>
+        <DiffView original={original} refactored={refactored} language={language} fullscreen forceMobile />
       </div>
     </motion.div>
   )
@@ -431,6 +500,9 @@ export default function App() {
   const [language, setLanguage] = useState<Language>('javascript')
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
   const [diffExpanded, setDiffExpanded] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const lineGutterRef = useRef<HTMLDivElement>(null)
 
   const { status, result, error, runReview, loadResult } = useReview()
   const { history, addEntry, clearHistory } = useHistory()
@@ -452,6 +524,18 @@ export default function App() {
     if (res) addEntry(code, language, res)
   }, [code, language, runReview, addEntry, isMobile])
 
+  const handleSelectAll = useCallback(async () => {
+    // Select all text in the textarea (mobile: triggers native copy toolbar)
+    const ta = textareaRef.current
+    if (ta) { ta.focus(); ta.select() }
+    // Also write to clipboard as fallback
+    try {
+      await navigator.clipboard.writeText(code)
+    } catch { /* clipboard permission denied — native selection is enough */ }
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+  }, [code])
+
   const handleShare = useCallback(async () => {
     if (!result) return
     const url = buildShareUrl({ code, language, result })
@@ -460,7 +544,7 @@ export default function App() {
     setTimeout(() => setShareStatus('idle'), 2000)
   }, [result, code, language])
 
-  const isLoading = status === 'streaming'
+  const isLoading = status === 'streaming' || status === 'refactoring'
 
   return (
     <div style={S.app}>
@@ -489,6 +573,15 @@ export default function App() {
                   {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
                 <FileDropZone onLoad={(c, l) => { setCode(c); setLanguage(l) }} />
+                {isMobile && (
+                  <button
+                    onClick={handleSelectAll}
+                    className="copy-all-btn"
+                    style={{ ...S.copyBtn, color: codeCopied ? '#00FF88' : '#8A9E95', borderColor: codeCopied ? '#00FF8844' : '#2A3530' }}
+                  >
+                    {codeCopied ? '✓ Selected' : '⊡ Select All'}
+                  </button>
+                )}
                 <button
                   onClick={handleRun}
                   disabled={isLoading || !code.trim()}
@@ -498,28 +591,73 @@ export default function App() {
                   {isLoading ? 'Analyzing...' : '▶ Run Review'}
                 </button>
               </div>
-              <textarea
-                value={code}
-                onChange={e => setCode(e.target.value)}
-                style={S.textarea}
-                spellCheck={false}
-                placeholder="Paste your code here..."
-              />
+              <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                <div
+                  ref={lineGutterRef}
+                  className="line-gutter"
+                  style={{
+                    width: 48, minWidth: 48,
+                    background: '#0A0C0B',
+                    borderRight: '1px solid #1E2220',
+                    overflow: 'hidden',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '16px',
+                    lineHeight: '1.7',
+                    paddingTop: '20px',
+                    paddingBottom: '20px',
+                    textAlign: 'right',
+                    paddingRight: '10px',
+                    color: '#2A3530',
+                    userSelect: 'none',
+                    flexShrink: 0,
+                  }}
+                >
+                  {code.split('\n').map((_, i) => (
+                    <div key={i}>{i + 1}</div>
+                  ))}
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
+                  onScroll={() => {
+                    if (lineGutterRef.current && textareaRef.current) {
+                      lineGutterRef.current.scrollTop = textareaRef.current.scrollTop
+                    }
+                  }}
+                  style={S.textarea}
+                  spellCheck={false}
+                  placeholder="Paste your code here..."
+                />
+              </div>
+              <EditorStatusBar code={code} language={language} />
             </div>
 
             {/* Right — Results */}
             <div className={`panel-right${isMobile && mobilePanel === 'code' ? ' mobile-hidden' : ''}`}>
-              <div style={{ ...S.panelHeader, justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95', letterSpacing: '0.08em' }}>
-                  REVIEW OUTPUT
-                </span>
+              <div style={{ ...S.panelHeader, justifyContent: 'space-between', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  {isMobile && (
+                    <button
+                      onClick={() => setMobilePanel('code')}
+                      style={{ ...S.copyBtn, display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, padding: '6px 12px' }}
+                    >
+                      ← Code
+                    </button>
+                  )}
+                  {!isMobile && (
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#8A9E95', letterSpacing: '0.08em' }}>
+                      REVIEW OUTPUT
+                    </span>
+                  )}
+                </div>
                 {status === 'done' && result && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', flexShrink: 0 }}>
                     <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '11px', color: '#00FF88' }}>✓</span>
                     <button onClick={handleShare} style={{ ...S.copyBtn, borderColor: '#00FF8833', color: shareStatus === 'copied' ? '#00FF88' : '#8A9E95' }}>
                       {shareStatus === 'copied' ? '✓ Copied' : '⇧ Share'}
                     </button>
-                    <EmbedBadge score={result.score} language={language} />
+                    {!isMobile && <EmbedBadge score={result.score} language={language} />}
                   </div>
                 )}
               </div>
@@ -537,14 +675,24 @@ export default function App() {
                     Error: {error}
                   </div>
                 )}
-                {status === 'done' && result && (
+                {(status === 'refactoring' || status === 'done') && result && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <ResultPanel
                       result={result}
                       originalCode={code}
                       language={language}
-                      onExpandDiff={() => setDiffExpanded(true)}
+                      onExpandDiff={status === 'done' ? () => setDiffExpanded(true) : undefined}
+                      onRetry={status === 'done' ? handleRun : undefined}
+                      onApplyRefactored={status === 'done' ? (refactored) => { setCode(refactored); setMobilePanel('code') } : undefined}
                     />
+                    {status === 'refactoring' && (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '4px 0' }}>
+                        {[0, 1, 2].map(i => (
+                          <motion.span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#FFD700', display: 'block' }} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }} />
+                        ))}
+                        <span style={{ color: '#8A9E95', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', marginLeft: '6px' }}>Generating refactored code...</span>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </div>
@@ -558,29 +706,34 @@ export default function App() {
       </AnimatePresence>
 
       {/* ── Mobile bottom tab bar ────────────────────────────────────────── */}
-      {tab === 'editor' && (
-        <nav className="mobile-tabs">
-          <button className={`mobile-tab${mobilePanel === 'code' ? ' active' : ''}`} onClick={() => setMobilePanel('code')}>
-            <div className="mobile-tab-dot" />
-            Code
-          </button>
-          <button
-            className={`mobile-tab${mobilePanel === 'results' ? ' active' : ''}`}
-            onClick={() => {
-              if (!code.trim()) return
-              if (status === 'idle') handleRun()
-              else setMobilePanel('results')
-            }}
-          >
-            <div className="mobile-tab-dot" />
-            {isLoading ? 'Analyzing...' : 'Results'}
-          </button>
-          <button className="mobile-tab" onClick={() => setTab('history')}>
-            <div className="mobile-tab-dot" />
-            History
-          </button>
-        </nav>
-      )}
+      <nav className="mobile-tabs">
+        <button
+          className={`mobile-tab${tab === 'editor' && mobilePanel === 'code' ? ' active' : ''}`}
+          onClick={() => { setTab('editor'); setMobilePanel('code') }}
+        >
+          <div className="mobile-tab-dot" />
+          Code
+        </button>
+        <button
+          className={`mobile-tab${tab === 'editor' && mobilePanel === 'results' ? ' active' : ''}`}
+          onClick={() => {
+            setTab('editor')
+            if (!code.trim()) return
+            if (status === 'idle') handleRun()
+            else setMobilePanel('results')
+          }}
+        >
+          <div className="mobile-tab-dot" />
+          {isLoading ? 'Analyzing...' : 'Results'}
+        </button>
+        <button
+          className={`mobile-tab${tab === 'history' ? ' active' : ''}`}
+          onClick={() => setTab('history')}
+        >
+          <div className="mobile-tab-dot" />
+          History
+        </button>
+      </nav>
 
       {/* ── Fullscreen Diff Overlay ──────────────────────────────────────── */}
       <AnimatePresence>

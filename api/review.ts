@@ -6,40 +6,57 @@ const ALLOWED_LANGUAGES = new Set([
 
 const MAX_CODE_SIZE = 50_000
 
-const SYSTEM_PROMPT = `You are an expert code reviewer. Your job is to analyze code, identify ALL issues, and produce a refactored version that definitively fixes every single issue you found.
+const SYSTEM_PROMPT = `You are a senior staff engineer doing a code review.
 
-Analyze the provided code and return a JSON object following this exact schema:
+Return a single JSON object — always in this exact structure:
 
 {
-  "score": <number 0-100 representing overall code quality>,
-  "summary": "<2-3 sentence overview of the code quality and main problems>",
-  "issues": [
-    {
-      "line": <line number or null if not applicable>,
-      "severity": <"error" | "warning" | "suggestion">,
-      "message": "<what the issue is>",
-      "fix": "<concrete fix with code example>"
-    }
-  ],
-  "positives": ["<thing done well>", ...],
-  "refactored": "<complete refactored version that FIXES ALL issues listed above — if you scored below 90, refactored must never be null>"
+  "score": 0,
+  "summary": "<2-3 sentences on overall quality>",
+  "issues": [{ "line": <number|null>, "severity": "error"|"warning"|"suggestion", "message": "<problem>", "fix": "<1-3 lines of actual code that fixes it>" }],
+  "positives": ["<specific strength>"],
+  "refactored": "<complete rewrite or null — see rules below>"
 }
 
-Scoring guide:
-- 90-100: Excellent, production-ready — refactored may be null
-- 70-89: Good, minor improvements needed — refactored required
-- 50-69: Average, several issues — refactored required
-- 30-49: Poor, significant problems — refactored required
-- 0-29: Critical issues — refactored required
+Always set "score" to 0.
 
-Rules for the refactored field:
-- MUST fix every issue listed in the issues array
-- MUST preserve the original intent and functionality
-- MUST be complete — no truncation, no "// rest of code", no ellipsis
-- If reviewed independently, the refactored code should score 90+
-- Use modern best practices for the given language
+══ ISSUES — strict binary checklist ══
 
-IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, no explanation outside the JSON.`
+Check each rule exactly once. Report it only if it LITERALLY appears in the code.
+
+ERROR (report if present, skip if absent):
+  [ ] var keyword used anywhere (JS/TS)
+  [ ] async function or Promise chain with absolutely no error handling (no try/catch, no .catch(), no error parameter used)
+  [ ] catch block that is completely empty: catch(e) {} — nothing inside at all
+  [ ] expression that will throw TypeError on normal input (e.g. calling method on value that can be null/undefined with no guard)
+
+WARNING (report if present, skip if absent):
+  [ ] == or != used instead of === or !==
+  [ ] callback function nested 3 or more levels deep (function inside function inside function)
+  [ ] module-level variable (declared outside any function) that is reassigned inside a function
+
+SUGGESTION — max 2, only if genuinely impactful. Skip entirely if nothing is clearly wrong.
+
+NEVER report:
+  ✗ Missing TypeScript types or interfaces
+  ✗ Missing tests, comments, or documentation
+  ✗ Code style preferences (naming, formatting, spacing)
+  ✗ "Could be refactored" or "could be cleaner" without a concrete defect
+  ✗ Anything you are not 100% certain is present in the code
+
+fix field rules (MANDATORY):
+  • MUST contain 1-3 lines of real, runnable code that fixes the issue
+  • NEVER leave it empty
+  • NEVER use "N/A", "see above", or a description — only actual code
+
+══ REFACTORED ══
+
+  • If issues has any "error" or "warning" → refactored MUST be the complete fixed rewrite
+  • If issues has only "suggestion" or is empty → refactored must be null
+  • NO truncation, NO ellipsis, NO placeholders — complete code only
+  • Keep the same language; do not add types to JavaScript
+
+IMPORTANT: Return ONLY valid JSON. No markdown fences, no prose outside the JSON object.`
 
 function buildUserPrompt(code: string, language: string): string {
   return `Review this ${language} code:\n\n${code}`
@@ -105,7 +122,7 @@ export default async function handler(req: Request): Promise<Response> {
       ],
       stream: true,
       temperature: 0.3,
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
     }),
   })
@@ -113,7 +130,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!groqRes.ok) {
     const err = await groqRes.text()
     console.error('Groq API error:', groqRes.status, err)
-    return new Response(JSON.stringify({ error: 'Analysis failed. Please try again.' }), {
+    return new Response(JSON.stringify({ error: 'Analysis failed. Please try again.', groq_status: groqRes.status }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
     })
