@@ -87,7 +87,7 @@ body {
     left: 0;
     right: 0;
     height: 56px;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 6px);
     background: #141716;
     border-top: 1px solid #1E2220;
     z-index: 50;

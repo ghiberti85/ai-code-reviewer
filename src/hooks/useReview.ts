@@ -33,13 +33,27 @@ export function useReview() {
     setState({ status: 'streaming', result: null, raw: '', error: null })
 
     try {
-      const res = await fetch('/api/review', {
+      // Retry once on 502 (Groq free-tier rate limits cause occasional failures)
+      let res = await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, language }),
       })
+      if (res.status === 502) {
+        await new Promise(r => setTimeout(r, 2500))
+        res = await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, language }),
+        })
+      }
 
-      if (!res.ok) throw new Error(`API error: ${res.status}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as Record<string, unknown>
+        const groqStatus = body.groq_status as number | undefined
+        if (groqStatus === 429) throw new Error('Rate limit reached — wait a few seconds and try again')
+        throw new Error('Analysis failed — please try again')
+      }
 
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response body')
@@ -65,7 +79,6 @@ export function useReview() {
         ) {
           throw new Error('Invalid response schema')
         }
-        // Normalize escaped newlines the model sometimes emits as literal \n inside JSON strings
         if (typeof parsed.refactored === 'string') {
           parsed.refactored = parsed.refactored.replace(/\\n/g, '\n').replace(/\\t/g, '  ')
         }
@@ -80,12 +93,20 @@ export function useReview() {
         setState({ status: 'refactoring', result, raw: accumulated, error: null })
 
         try {
-          const refactorRes = await fetch('/api/refactor', {
+          let refactorRes = await fetch('/api/refactor', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code, language, issues: result.issues }),
           })
-
+          // Retry once on 502
+          if (refactorRes.status === 502) {
+            await new Promise(r => setTimeout(r, 2500))
+            refactorRes = await fetch('/api/refactor', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code, language, issues: result.issues }),
+            })
+          }
           if (refactorRes.ok) {
             const refactorRaw = await streamToString(refactorRes)
             const parsed = JSON.parse(refactorRaw)
@@ -95,7 +116,7 @@ export function useReview() {
             }
           }
         } catch {
-          // refactor fetch failed — proceed with result as-is
+          // refactor fetch failed — show result without refactored code
         }
       }
 
