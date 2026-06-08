@@ -246,12 +246,14 @@ function ResultPanel({
   language,
   onExpandDiff,
   onRetry,
+  onApplyRefactored,
 }: {
   result: import('./types/review').ReviewResult
   originalCode?: string
   language?: Language
   onExpandDiff?: () => void
   onRetry?: () => void
+  onApplyRefactored?: (code: string) => void
 }) {
   const refactoredMissing = result.score < 90 && !result.refactored
 
@@ -295,15 +297,25 @@ function ResultPanel({
         <div style={S.card}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <div style={{ ...S.sectionTitle, marginBottom: 0 }}>Refactored</div>
-            {onExpandDiff && (
-              <button
-                onClick={onExpandDiff}
-                className="expand-diff-btn"
-                style={{ ...S.copyBtn, borderColor: '#00FF8833', color: '#00FF88', display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                ⤢ Expand
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {onApplyRefactored && (
+                <button
+                  onClick={() => onApplyRefactored(result.refactored!)}
+                  style={{ ...S.copyBtn, borderColor: '#00FF8844', color: '#00FF88', background: '#00FF8810', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}
+                >
+                  ↙ Aplicar no editor
+                </button>
+              )}
+              {onExpandDiff && (
+                <button
+                  onClick={onExpandDiff}
+                  className="expand-diff-btn"
+                  style={{ ...S.copyBtn, borderColor: '#00FF8833', color: '#00FF88', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
+                  ⤢ Expand
+                </button>
+              )}
+            </div>
           </div>
           <DiffView original={originalCode} refactored={result.refactored} language={language} />
         </div>
@@ -639,6 +651,7 @@ export default function App() {
                       language={language}
                       onExpandDiff={status === 'done' ? () => setDiffExpanded(true) : undefined}
                       onRetry={status === 'done' ? handleRun : undefined}
+                      onApplyRefactored={status === 'done' ? (refactored) => { setCode(refactored); setMobilePanel('code') } : undefined}
                     />
                     {status === 'refactoring' && (
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '4px 0' }}>
