@@ -11,7 +11,7 @@ Browser → React App (Vite) → POST /api/review  → Vercel Edge Function → 
                            → POST /api/refactor → Vercel Edge Function → Groq API (streaming SSE)
                                                                                ↓
                                           /api/review:  meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 4096, temperature: 0.3)
-                                          /api/refactor: llama-3.1-8b-instant (max_tokens: 8192, temperature: 0.2)
+                                          /api/refactor: meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 8192, temperature: 0.2)
 ```
 
 O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON acumulado), que o frontend consome linha a linha e exibe em tempo real.
@@ -29,7 +29,7 @@ O Edge Function transforma o stream SSE da Groq em stream de texto puro (JSON ac
 | Async state | TanStack Query | 5 |
 | Syntax highlight | Shiki | 1 |
 | LLM (review) | Groq API — `meta-llama/llama-4-scout-17b-16e-instruct` | free tier |
-| LLM (refactor) | Groq API — `llama-3.1-8b-instant` | free tier |
+| LLM (refactor) | Groq API — `meta-llama/llama-4-scout-17b-16e-instruct` | free tier |
 | Backend | Vercel Edge Functions | — |
 | Storage | localStorage | — |
 | Testes | Vitest + React Testing Library | — |
@@ -144,7 +144,7 @@ ai-code-reviewer/
 - Logar erros da Groq server-side via `console.error`, nunca repassar payload raw ao cliente
 - Manter `export const config = { runtime: 'edge' }` — remove essa linha e o runtime quebra
 - `api/review.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 4096`, `temperature: 0.3`
-- `api/refactor.ts` usa `model: 'llama-3.1-8b-instant'`, `max_tokens: 8192`, `temperature: 0.2`
+- `api/refactor.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 8192`, `temperature: 0.2`
 - `api/refactor.ts` recebe `{ code, language, issues, summary }` e retorna stream de texto com o código refatorado
 
 ### Estratégia two-pass (refactored automático)
