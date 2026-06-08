@@ -82,21 +82,27 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
   }, [original, refactored, shikiLang])
 
   const copy = async () => {
+    let ok = false
     try {
       await navigator.clipboard.writeText(refactored)
-    } catch {
-      // Fallback for iOS Safari which blocks clipboard API without user gesture context
+      ok = true
+    } catch { /* fall through */ }
+
+    if (!ok) {
+      // execCommand fallback — must run synchronously within user gesture
       const ta = document.createElement('textarea')
       ta.value = refactored
-      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;'
+      ta.setAttribute('readonly', '')
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;'
       document.body.appendChild(ta)
-      ta.focus()
-      ta.select()
-      try { document.execCommand('copy') } catch { /* ignore */ }
+      ta.focus({ preventScroll: true })
+      ta.setSelectionRange(0, ta.value.length)
+      try { ok = document.execCommand('copy') } catch { /* ignore */ }
       document.body.removeChild(ta)
     }
+
     setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const addedCount = diffLines.filter(l => l.type === 'added').length
@@ -149,6 +155,33 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
         <SplitView leftHtml={leftHtml} rightHtml={rightHtml} fullscreen={fullscreen} />
       ) : (
         <UnifiedView diffLines={diffLines} fullscreen={fullscreen} isMobile={isMobile} />
+      )}
+
+      {isMobile && (
+        <button
+          onClick={copy}
+          style={{
+            margin: '12px',
+            padding: '14px',
+            background: copied ? '#00FF8822' : '#141716',
+            border: `1px solid ${copied ? '#00FF88' : '#2A3530'}`,
+            borderRadius: '8px',
+            color: copied ? '#00FF88' : '#D4E8DC',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            width: 'calc(100% - 24px)',
+            minHeight: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            transition: 'all 0.15s',
+          }}
+        >
+          {copied ? '✓ Copiado!' : '⎘ Copiar código refatorado'}
+        </button>
       )}
     </motion.div>
   )
