@@ -132,6 +132,8 @@ body {
 
   /* ── Copy All button (mobile only) ── */
   .copy-all-btn {
+    display: flex !important;
+    align-items: center;
     font-size: 12px !important;
     padding: 6px 12px !important;
     min-height: 36px;
