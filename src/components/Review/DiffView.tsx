@@ -65,12 +65,13 @@ function getHighlighter() {
 
 
 export function DiffView({ original, refactored, language, fullscreen, forceMobile }: Props) {
-  // On mobile, split view is unusable — default to unified and hide the split toggle
   const isMobile = forceMobile ?? (typeof window !== 'undefined' && window.innerWidth <= 768)
   const [mode, setMode] = useState<DiffMode>(isMobile ? 'unified' : 'split')
   const [leftHtml, setLeftHtml] = useState('')
   const [rightHtml, setRightHtml] = useState('')
   const [copied, setCopied] = useState(false)
+  const [showCode, setShowCode] = useState(false)
+  const codeTextareaRef = useRef<HTMLTextAreaElement>(null)
   const shikiLang = LANGUAGES.find(l => l.value === language)?.shiki ?? 'typescript'
   const diffLines = useRef(computeDiff(original, refactored)).current
 
@@ -81,28 +82,21 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
     })
   }, [original, refactored, shikiLang])
 
-  const copy = async () => {
-    let ok = false
+  // Desktop copy — clipboard API works reliably outside iOS
+  const copyDesktop = async () => {
     try {
       await navigator.clipboard.writeText(refactored)
-      ok = true
-    } catch { /* fall through */ }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch { /* ignore */ }
+  }
 
-    if (!ok) {
-      // execCommand fallback — must run synchronously within user gesture
-      const ta = document.createElement('textarea')
-      ta.value = refactored
-      ta.setAttribute('readonly', '')
-      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;'
-      document.body.appendChild(ta)
-      ta.focus({ preventScroll: true })
-      ta.setSelectionRange(0, ta.value.length)
-      try { ok = document.execCommand('copy') } catch { /* ignore */ }
-      document.body.removeChild(ta)
-    }
-
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  // Mobile select-all — triggers iOS native copy menu; far more reliable than clipboard API
+  const selectAllMobile = () => {
+    const ta = codeTextareaRef.current
+    if (!ta) return
+    ta.focus()
+    ta.setSelectionRange(0, ta.value.length)
   }
 
   const addedCount = diffLines.filter(l => l.type === 'added').length
@@ -113,12 +107,11 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
     color: active ? '#00FF88' : '#8A9E95',
     border: '1px solid ' + (active ? '#00FF8844' : '#2A3530'),
     borderRadius: '4px',
-    padding: isMobile ? '6px 14px' : '3px 10px',
+    padding: '3px 10px',
     cursor: 'pointer',
     fontFamily: 'JetBrains Mono, monospace',
     fontSize: '11px',
     textTransform: 'capitalize' as const,
-    minHeight: isMobile ? '36px' : 'auto',
   })
 
   return (
@@ -140,14 +133,11 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
             <>
               <button key="split" onClick={() => setMode('split')} style={btnStyle(mode === 'split')}>split</button>
               <button key="unified" onClick={() => setMode('unified')} style={btnStyle(mode === 'unified')}>unified</button>
+              <button onClick={copyDesktop} style={{ ...btnStyle(false), marginLeft: '4px' }}>
+                {copied ? '✓' : 'Copy'}
+              </button>
             </>
           )}
-          <button
-            onClick={copy}
-            style={{ ...btnStyle(false), marginLeft: isMobile ? 0 : '4px' }}
-          >
-            {copied ? '✓' : 'Copy'}
-          </button>
         </div>
       </div>
 
@@ -157,32 +147,73 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
         <UnifiedView diffLines={diffLines} fullscreen={fullscreen} isMobile={isMobile} />
       )}
 
+      {/* Mobile: show refactored code in a real textarea for native iOS copy */}
       {isMobile && (
-        <button
-          onClick={copy}
-          style={{
-            margin: '12px',
-            padding: '14px',
-            background: copied ? '#00FF8822' : '#141716',
-            border: `1px solid ${copied ? '#00FF88' : '#2A3530'}`,
-            borderRadius: '8px',
-            color: copied ? '#00FF88' : '#D4E8DC',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            width: 'calc(100% - 24px)',
-            minHeight: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            transition: 'all 0.15s',
-          }}
-        >
-          {copied ? '✓ Copiado!' : '⎘ Copiar código refatorado'}
-        </button>
+        <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button
+            onClick={() => setShowCode(s => !s)}
+            style={{
+              padding: '14px',
+              background: '#141716',
+              border: '1px solid #2A3530',
+              borderRadius: '8px',
+              color: '#D4E8DC',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              width: '100%',
+              minHeight: '48px',
+            }}
+          >
+            {showCode ? '▲ Ocultar código refatorado' : '▼ Ver código refatorado'}
+          </button>
+
+          {showCode && (
+            <>
+              <button
+                onClick={selectAllMobile}
+                style={{
+                  padding: '14px',
+                  background: '#00FF8815',
+                  border: '1px solid #00FF8844',
+                  borderRadius: '8px',
+                  color: '#00FF88',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  width: '100%',
+                  minHeight: '48px',
+                }}
+              >
+                ⊡ Selecionar tudo → depois toque "Copiar"
+              </button>
+              <textarea
+                ref={codeTextareaRef}
+                value={refactored}
+                readOnly
+                style={{
+                  width: '100%',
+                  minHeight: '200px',
+                  background: '#0D0F0E',
+                  border: '1px solid #1E2220',
+                  borderRadius: '8px',
+                  color: '#D4E8DC',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '12px',
+                  lineHeight: 1.6,
+                  padding: '12px',
+                  resize: 'vertical',
+                  WebkitUserSelect: 'text',
+                  userSelect: 'text',
+                }}
+              />
+            </>
+          )}
+        </div>
       )}
+
     </motion.div>
   )
 }
