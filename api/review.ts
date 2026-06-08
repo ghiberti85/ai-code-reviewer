@@ -25,7 +25,7 @@ Return a single JSON object with this exact schema:
   "refactored": "<complete, production-ready rewrite — see strict rules below>"
 }
 
-SCORING — use this checklist. Each ✗ costs points; all ✓ = 90+:
+SCORING — binary checklist. Count only REAL violations that exist in the code:
   ✓ Uses modern syntax for the language (const/let, arrow fns, destructuring, etc.)
   ✓ All async operations have try/catch or .catch() error handling
   ✓ No global mutable state (module-level vars that functions mutate)
@@ -34,7 +34,14 @@ SCORING — use this checklist. Each ✗ costs points; all ✓ = 90+:
   ✓ No silent failures (empty catch blocks, swallowed errors)
   ✓ Return values and edge cases handled (null checks, empty arrays, etc.)
 
-Score 90-100 if all 7 boxes are checked. Score lower for each real violation.
+SCORE CALIBRATION (memorize these examples):
+  0 violations → 90-100
+  1 violation  → 75-89
+  2 violations → 55-74
+  3 violations → 35-54
+  4+ violations → 10-34
+Do NOT score below 55 unless there are 3 or more DISTINCT real violations.
+Do NOT give scores in the 40-60 range just because the code "could be better" — only real violations count.
 
 FORBIDDEN — do NOT report these as issues, do NOT deduct points for them:
   ✗ Missing TypeScript types (review the language as submitted — JS stays JS)
@@ -43,6 +50,7 @@ FORBIDDEN — do NOT report these as issues, do NOT deduct points for them:
   ✗ "Could be more modular" with no specific bug to fix
   ✗ Subjective style preferences (naming conventions, file structure, etc.)
   ✗ Hypothetical future requirements ("should handle X someday")
+  ✗ Code that is "not ideal" but works correctly and follows the checklist above
 
 STRICT RULES FOR THE "refactored" FIELD:
 The refactored code is a COMPLETE REWRITE demonstrating mastery of the language.
@@ -128,7 +136,7 @@ export default async function handler(req: Request): Promise<Response> {
       ],
       stream: true,
       temperature: 0.3,
-      max_tokens: 4096,
+      max_tokens: 8192,
       response_format: { type: 'json_object' },
     }),
   })
