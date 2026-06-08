@@ -18,8 +18,8 @@
                                                 │
                                     ┌───────────▼──────────┐
                                     │  Groq API            │
-                                    │  llama-4-scout (review)   │
-                                    │  qwen3-32b (refactor)│
+                                    │  llama-4-scout (review)  │
+                                    │  llama-4-scout (refactor)│
                                     │  (SSE streaming)     │
                                     └──────────────────────┘
 ```
@@ -54,12 +54,14 @@ Melhora a percepção de performance. O usuário vê feedback imediato ao invés
 
 ## State machine do useReview
 
-Estados: `idle | streaming | done | error`
+Estados: `idle | streaming | refactoring | done | error`
 
 ```
 idle
   └─[runReview]─▶ streaming
-                    ├─[stream ends + valid JSON]─▶ done
+                    ├─[stream ends + valid JSON, score < 90 e refactored null]─▶ refactoring
+                    │                                                               └─▶ done
+                    ├─[stream ends + valid JSON, score ≥ 90]─▶ done
                     ├─[stream ends + invalid JSON]─▶ error
                     └─[fetch error]─▶ error
 
@@ -70,16 +72,35 @@ done / error
   └─[loadResult]─▶ done   (usado ao carregar share link)
 ```
 
-Nota: não existe um estado `refactoring` separado no hook. A chamada a `/api/refactor` é feita como operação adicional após o estado `done`, fora do ciclo de estados do `useReview`.
+O score é calculado deterministicamente no cliente via `calcScore`:
+```ts
+95 - 13 * errors - 7 * warnings - 2 * suggestions  (mínimo 10)
+```
+O modelo sempre retorna `score: 0`. Isso elimina a variabilidade do LLM no score.
 
 ## Modelos LLM e parâmetros
 
 | Endpoint | Modelo | temperature | max_tokens |
 |----------|--------|-------------|------------|
-| `POST /api/review` | `meta-llama/llama-4-scout-17b-16e-instruct` | 0.3 | 4096 |
-| `POST /api/refactor` | `qwen/qwen3-32b` | 0.2 | 8192 |
+| `POST /api/review` | `meta-llama/llama-4-scout-17b-16e-instruct` | 0.3 | 8192 |
+| `POST /api/refactor` | `meta-llama/llama-4-scout-17b-16e-instruct` | 0.2 | 8192 |
 
 Ambos usam `response_format: { type: 'json_object' }` para garantir saída JSON válida.
+
+## Prompt de review — checklist binário
+
+O prompt usa um checklist binário de critérios fixos que o modelo deve verificar um a um. Isso reduz a variabilidade porque:
+1. O modelo não pode inventar categorias — apenas confirma ou rejeita cada item
+2. O campo `fix` é obrigatório e deve conter código real (nunca vazio, nunca "N/A")
+3. O score não é responsabilidade do modelo — é calculado client-side
+
+## Editor com numeração de linhas
+
+No desktop, o editor exibe um gutter de números de linha alinhado ao textarea. O scroll é sincronizado via `onScroll` handler. No mobile, o gutter é ocultado via CSS (`.line-gutter { display: none }`).
+
+## Diff View — fallback de highlight
+
+O Shiki é carregado uma única vez via singleton (`highlighterPromise`). Se a carga falhar (rede, gramática não suportada), o `highlighterPromise` é resetado para `null` para permitir retry na próxima montagem. O `SplitView` tem fallback para texto puro quando o highlight falha, evitando o estado infinito de "Loading highlight...".
 
 ## Responsividade
 

@@ -502,6 +502,7 @@ export default function App() {
   const [diffExpanded, setDiffExpanded] = useState(false)
   const [codeCopied, setCodeCopied] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const lineGutterRef = useRef<HTMLDivElement>(null)
 
   const { status, result, error, runReview, loadResult } = useReview()
   const { history, addEntry, clearHistory } = useHistory()
@@ -590,14 +591,45 @@ export default function App() {
                   {isLoading ? 'Analyzing...' : '▶ Run Review'}
                 </button>
               </div>
-              <textarea
-                ref={textareaRef}
-                value={code}
-                onChange={e => setCode(e.target.value)}
-                style={S.textarea}
-                spellCheck={false}
-                placeholder="Paste your code here..."
-              />
+              <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                <div
+                  ref={lineGutterRef}
+                  className="line-gutter"
+                  style={{
+                    width: 48, minWidth: 48,
+                    background: '#0A0C0B',
+                    borderRight: '1px solid #1E2220',
+                    overflow: 'hidden',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: '16px',
+                    lineHeight: '1.7',
+                    paddingTop: '20px',
+                    paddingBottom: '20px',
+                    textAlign: 'right',
+                    paddingRight: '10px',
+                    color: '#2A3530',
+                    userSelect: 'none',
+                    flexShrink: 0,
+                  }}
+                >
+                  {code.split('\n').map((_, i) => (
+                    <div key={i}>{i + 1}</div>
+                  ))}
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
+                  onScroll={() => {
+                    if (lineGutterRef.current && textareaRef.current) {
+                      lineGutterRef.current.scrollTop = textareaRef.current.scrollTop
+                    }
+                  }}
+                  style={S.textarea}
+                  spellCheck={false}
+                  placeholder="Paste your code here..."
+                />
+              </div>
               <EditorStatusBar code={code} language={language} />
             </div>
 

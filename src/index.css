@@ -121,6 +121,9 @@ body {
     transition: background 0.15s;
   }
 
+  /* Line gutter is desktop-only */
+  .line-gutter { display: none !important; }
+
   /* ── Code panel header ── */
   .panel-header-scroll {
     flex-wrap: wrap;

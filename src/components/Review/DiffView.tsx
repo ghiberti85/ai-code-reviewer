@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { createHighlighter, type Highlighter } from 'shiki'
 import type { Language } from '../../types/review'
@@ -58,26 +58,39 @@ function getHighlighter() {
     highlighterPromise = createHighlighter({
       themes: ['github-dark'],
       langs: ['typescript', 'javascript', 'python', 'go', 'rust', 'java', 'csharp', 'css', 'sql'],
+    }).catch(err => {
+      highlighterPromise = null
+      throw err
     })
   }
   return highlighterPromise
 }
-
 
 export function DiffView({ original, refactored, language, fullscreen, forceMobile }: Props) {
   const isMobile = forceMobile ?? (typeof window !== 'undefined' && window.innerWidth <= 768)
   const [mode, setMode] = useState<DiffMode>(isMobile ? 'unified' : 'split')
   const [leftHtml, setLeftHtml] = useState('')
   const [rightHtml, setRightHtml] = useState('')
+  const [highlightFailed, setHighlightFailed] = useState(false)
   const [copied, setCopied] = useState(false)
   const shikiLang = LANGUAGES.find(l => l.value === language)?.shiki ?? 'typescript'
   const diffLines = useRef(computeDiff(original, refactored)).current
 
   useEffect(() => {
+    let cancelled = false
+    setHighlightFailed(false)
     getHighlighter().then(hl => {
-      setLeftHtml(hl.codeToHtml(original, { lang: shikiLang, theme: 'github-dark' }))
-      setRightHtml(hl.codeToHtml(refactored, { lang: shikiLang, theme: 'github-dark' }))
+      if (cancelled) return
+      try {
+        setLeftHtml(hl.codeToHtml(original, { lang: shikiLang, theme: 'github-dark' }))
+        setRightHtml(hl.codeToHtml(refactored, { lang: shikiLang, theme: 'github-dark' }))
+      } catch {
+        setHighlightFailed(true)
+      }
+    }).catch(() => {
+      if (!cancelled) setHighlightFailed(true)
     })
+    return () => { cancelled = true }
   }, [original, refactored, shikiLang])
 
   const copyDesktop = async () => {
@@ -123,7 +136,7 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
       </div>
 
       {mode === 'split' && !isMobile ? (
-        <SplitView leftHtml={leftHtml} rightHtml={rightHtml} fullscreen={fullscreen} />
+        <SplitView leftHtml={leftHtml} rightHtml={rightHtml} fullscreen={fullscreen} failed={highlightFailed} original={original} refactored={refactored} />
       ) : (
         <UnifiedView diffLines={diffLines} fullscreen={fullscreen} isMobile={isMobile} />
       )}
@@ -131,8 +144,33 @@ export function DiffView({ original, refactored, language, fullscreen, forceMobi
   )
 }
 
-function SplitView({ leftHtml, rightHtml, fullscreen }: { leftHtml: string; rightHtml: string; fullscreen?: boolean }) {
+function SplitView({ leftHtml, rightHtml, fullscreen, failed, original, refactored }: {
+  leftHtml: string; rightHtml: string; fullscreen?: boolean; failed?: boolean; original: string; refactored: string
+}) {
   const maxH = fullscreen ? 'calc(100vh - 100px)' : '420px'
+  const plainStyle: React.CSSProperties = {
+    overflow: 'auto', maxHeight: maxH, fontSize: '12px', lineHeight: '1.7',
+    fontFamily: 'JetBrains Mono, monospace', padding: '12px', color: '#D4E8DC',
+    whiteSpace: 'pre', background: '#0D0F0E',
+  }
+  if (failed) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+        <div style={{ borderRight: '1px solid #1E2220' }}>
+          <div style={{ padding: '6px 12px', background: 'rgba(255,34,68,0.06)', borderBottom: '1px solid #1E2220' }}>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', color: '#FF2244' }}>− original</span>
+          </div>
+          <div style={plainStyle}>{original}</div>
+        </div>
+        <div>
+          <div style={{ padding: '6px 12px', background: 'rgba(0,255,136,0.06)', borderBottom: '1px solid #1E2220' }}>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', color: '#00FF88' }}>+ refactored</span>
+          </div>
+          <div style={plainStyle}>{refactored}</div>
+        </div>
+      </div>
+    )
+  }
   if (!leftHtml || !rightHtml) {
     return (
       <div style={{ padding: '24px', color: '#8A9E95', fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', textAlign: 'center' }}>

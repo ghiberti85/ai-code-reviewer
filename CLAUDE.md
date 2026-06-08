@@ -10,7 +10,7 @@ Guia de arquitetura e convenções para o Claude Code. Leia este arquivo antes d
 Browser → React App (Vite) → POST /api/review  → Vercel Edge Function → Groq API (streaming SSE)
                            → POST /api/refactor → Vercel Edge Function → Groq API (streaming SSE)
                                                                                ↓
-                                          /api/review:  meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 4096, temperature: 0.3)
+                                          /api/review:  meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 8192, temperature: 0.3)
                                           /api/refactor: meta-llama/llama-4-scout-17b-16e-instruct (max_tokens: 8192, temperature: 0.2)
 ```
 
@@ -100,7 +100,7 @@ ai-code-reviewer/
 │   │   ├── groq.ts            # SYSTEM_PROMPT, LANGUAGES, buildUserPrompt
 │   │   └── share.ts           # encode/decode review em URL base64
 │   ├── hooks/
-│   │   ├── useReview.ts       # Máquina de estados: idle→streaming→done|error
+│   │   ├── useReview.ts       # Máquina de estados: idle→streaming→refactoring→done|error; calcScore client-side
 │   │   ├── useHistory.ts      # localStorage CRUD, cap 20 entradas
 │   │   └── useMediaQuery.ts   # Hook para breakpoints responsivos
 │   ├── components/
@@ -143,7 +143,7 @@ ai-code-reviewer/
 - Validar todos os inputs antes de chamar a Groq API
 - Logar erros da Groq server-side via `console.error`, nunca repassar payload raw ao cliente
 - Manter `export const config = { runtime: 'edge' }` — remove essa linha e o runtime quebra
-- `api/review.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 4096`, `temperature: 0.3`
+- `api/review.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 8192`, `temperature: 0.3`
 - `api/refactor.ts` usa `model: 'meta-llama/llama-4-scout-17b-16e-instruct'`, `max_tokens: 8192`, `temperature: 0.2`
 - `api/refactor.ts` recebe `{ code, language, issues, summary }` e retorna stream de texto com o código refatorado
 
